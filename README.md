@@ -1,4 +1,9 @@
-# HEPROBench Review Demo
+# HEPROBench
+
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Python](https://img.shields.io/badge/Python-%E2%89%A53.10-3776AB?logo=python&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-%E2%89%A52.1-EE4C2C?logo=pytorch&logoColor=white)
+![Status](https://img.shields.io/badge/Status-Active-brightgreen)
 
 HEPROBench provides a standardized interface for evaluating H&E-to-multiplex-
 protein prediction methods. This review package includes a compact runnable
