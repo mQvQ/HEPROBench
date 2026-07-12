@@ -31,8 +31,7 @@ method adapters, HDF5 submission writing, validation, and evaluation.
 | **Unified interface** | A consistent configuration and command-line workflow across methods. |
 | **Runnable examples** | Synthetic H&E images, multiplex targets, and small checkpoints for local testing. |
 | **Submission validation** | Structured HDF5 output validation before evaluation. |
-| **Metrics** | Per-slide, per-tile, and per-channel MAE, MSE, Pearson, PSNR, and SSIM. |
-| **Cell-level metrics** | Cell-level Pearson correlation coefficient (PCC) for marker-expression agreement. |
+| **Metrics** | Per-slide, per-tile, and per-channel MAE, MSE, Pearson, PSNR, and SSIM; cell-level PCC, ACC, and F1. |
 
 ## Quick Start
 
