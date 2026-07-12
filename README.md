@@ -32,6 +32,7 @@ method adapters, HDF5 submission writing, validation, and evaluation.
 | **Runnable examples** | Synthetic H&E images, multiplex targets, and small checkpoints for local testing. |
 | **Submission validation** | Structured HDF5 output validation before evaluation. |
 | **Metrics** | Per-slide, per-tile, and per-channel MAE, MSE, Pearson, PSNR, and SSIM. |
+| **Cell-level metrics** *(planned)* | Cell-aware quantitative evaluation, including per-cell marker intensity agreement and cell-level matching metrics. |
 
 ## Quick Start
 
