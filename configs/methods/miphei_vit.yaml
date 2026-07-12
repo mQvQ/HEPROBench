@@ -1,0 +1,9 @@
+method:
+  name: miphei_vit
+  display_name: MIPHEI-ViT
+  description: H-Optimus-0 encoder with a ViTMatte-style decoder.
+  encoder_name: hoptimus0
+  width: 16
+  batch_size: 4
+  checkpoint: ../../checkpoints/miphei_vit_tiny.pt
+

@@ -1,0 +1,14 @@
+dataset:
+  name: heprobench_synthetic_review_demo
+  root: ../demo_data
+  metadata_csv: metadata.csv
+  channel_names: channel_names.json
+  image_column: image_path
+  target_column: target_path
+  slide_column: slide_name
+  row_column: row
+  col_column: col
+  split_column: split
+  split: demo
+  patch_size: 256
+

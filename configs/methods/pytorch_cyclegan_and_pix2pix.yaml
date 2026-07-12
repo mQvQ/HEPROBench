@@ -1,0 +1,9 @@
+method:
+  name: pytorch_cyclegan_and_pix2pix
+  display_name: pytorch-CycleGAN-and-pix2pix
+  description: Lightweight runnable adapter for the pix2pix/CycleGAN benchmark method family.
+  variant: pix2pix
+  width: 16
+  batch_size: 4
+  checkpoint: ../../checkpoints/pytorch_cyclegan_and_pix2pix_tiny.pt
+

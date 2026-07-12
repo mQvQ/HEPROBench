@@ -1,0 +1,8 @@
+method:
+  name: hex
+  display_name: HEX
+  description: Lightweight runnable adapter for the HEX benchmark method.
+  width: 16
+  batch_size: 4
+  checkpoint: ../../checkpoints/hex_tiny.pt
+

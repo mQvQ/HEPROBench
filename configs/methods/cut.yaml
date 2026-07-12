@@ -1,0 +1,8 @@
+method:
+  name: cut
+  display_name: CUT
+  description: Lightweight runnable adapter for the CUT benchmark method.
+  width: 16
+  batch_size: 4
+  checkpoint: ../../checkpoints/cut_tiny.pt
+

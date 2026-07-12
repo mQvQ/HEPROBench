@@ -1,0 +1,9 @@
+slide_name,row,col,split,image_path,target_path
+slide_001,0,0,demo,images/slide_001_patch_0_0.jpg,targets/slide_001_patch_0_0.npy
+slide_001,0,1,demo,images/slide_001_patch_0_1.jpg,targets/slide_001_patch_0_1.npy
+slide_001,1,0,demo,images/slide_001_patch_1_0.jpg,targets/slide_001_patch_1_0.npy
+slide_001,1,1,demo,images/slide_001_patch_1_1.jpg,targets/slide_001_patch_1_1.npy
+slide_002,0,0,demo,images/slide_002_patch_0_0.jpg,targets/slide_002_patch_0_0.npy
+slide_002,0,1,demo,images/slide_002_patch_0_1.jpg,targets/slide_002_patch_0_1.npy
+slide_002,1,0,demo,images/slide_002_patch_1_0.jpg,targets/slide_002_patch_1_0.npy
+slide_002,1,1,demo,images/slide_002_patch_1_1.jpg,targets/slide_002_patch_1_1.npy

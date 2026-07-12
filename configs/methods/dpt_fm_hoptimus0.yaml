@@ -1,0 +1,9 @@
+method:
+  name: dpt_fm
+  display_name: DPT + pathology foundation model
+  description: DPT-style decoder on top of a pathology foundation model encoder.
+  encoder_name: hoptimus0
+  width: 16
+  batch_size: 4
+  checkpoint: ../../checkpoints/dpt_fm_hoptimus0_tiny.pt
+

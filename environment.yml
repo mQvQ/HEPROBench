@@ -1,0 +1,18 @@
+name: heprobench-review
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pytorch>=2.1
+  - torchvision
+  - numpy
+  - pillow
+  - h5py
+  - pyyaml
+  - pip
+  - pip:
+      - -e .
+

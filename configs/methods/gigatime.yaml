@@ -1,0 +1,8 @@
+method:
+  name: gigatime
+  display_name: GigaTIME
+  description: Lightweight runnable adapter for the GigaTIME benchmark method.
+  width: 16
+  batch_size: 4
+  checkpoint: ../../checkpoints/gigatime_tiny.pt
+

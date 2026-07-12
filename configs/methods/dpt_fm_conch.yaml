@@ -1,0 +1,9 @@
+method:
+  name: dpt_fm
+  display_name: DPT + CONCH
+  description: DPT-style decoder with CONCH selected as the pathology foundation model encoder.
+  encoder_name: conch
+  width: 16
+  batch_size: 4
+  checkpoint: ../../checkpoints/dpt_fm_conch_tiny.pt
+

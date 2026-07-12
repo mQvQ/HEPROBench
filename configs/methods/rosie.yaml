@@ -1,0 +1,8 @@
+method:
+  name: rosie
+  display_name: ROSIE
+  description: Lightweight runnable adapter for the ROSIE benchmark method.
+  width: 16
+  batch_size: 4
+  checkpoint: ../../checkpoints/rosie_tiny.pt
+
