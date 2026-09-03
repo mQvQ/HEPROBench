@@ -89,6 +89,18 @@ class DryRunTests(unittest.TestCase):
                     payload = json.loads(native_path.read_text(encoding="utf-8"))
                     self.assertEqual(payload["method_name"], f"DPT-{config_path.stem}")
 
+    def test_unregistered_encoder_cannot_enter_through_set_override(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with self.assertRaises(KeyError):
+                dispatch_method_task(
+                    task="train",
+                    method_name="dpt_fm",
+                    config_path=ROOT / "configs" / "foundation_models" / "uni.json",
+                    output_dir=temp_dir,
+                    overrides=['model.encoder.name="musk"'],
+                    dry_run=True,
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

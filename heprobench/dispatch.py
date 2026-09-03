@@ -56,6 +56,14 @@ def dispatch_method_task(
         output_dir=output_dir,
         overrides=overrides,
     )
+    if method.name == "dpt_fm":
+        resolved_model = resolved.get("model", {})
+        resolved_encoder = resolved_model.get("encoder", {}) if isinstance(resolved_model, dict) else {}
+        final_encoder = str(resolved_encoder.get("name", "")) if isinstance(resolved_encoder, dict) else ""
+        if not final_encoder:
+            raise ValueError("dpt_fm requires model.encoder.name in JSON or --encoder")
+        resolve_encoder(final_encoder)
+        encoder = final_encoder
     run_dir = get_run_dir(resolved, method=method.name, task=task, source_path=source_path)
     resolved_path = write_resolved_config(resolved, run_dir, task)
 
