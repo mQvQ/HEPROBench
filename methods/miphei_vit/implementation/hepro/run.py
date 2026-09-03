@@ -33,7 +33,9 @@ def main(cfg: DictConfig) -> None:
     Path("logs").mkdir(exist_ok=True)
     # logdir = Path("logs") / "fm_{}_{}_{}_{}".format(
     #     cfg.model.model_name, cfg.model.encoder.encoder_name, "_".join(map(str, cfg.data.targ_channel_names)), timestamp)
-    logdir = Path("logs") / "fm_{}_{}_frozen_{}_lora_{}_{}_{}".format(
+    log_root = Path(cfg.output.run_dir) / "logs" if cfg.get("output") and cfg.output.get("run_dir") else Path("logs")
+    log_root.mkdir(parents=True, exist_ok=True)
+    logdir = log_root / "fm_{}_{}_frozen_{}_lora_{}_{}_{}".format(
          cfg.model.model_name, cfg.model.encoder.encoder_name, cfg.model.encoder.frozen, cfg.model.use_lora, cfg.data.cohort, timestamp)
     logdir.mkdir()
     #  TODO: check validity of config

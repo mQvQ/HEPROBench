@@ -18,6 +18,8 @@ from methods.runner_utils import (
     resolve_known_paths,
     run_dir,
     set_default,
+    set_from,
+    split_csv,
     training_command,
     write_json,
 )
@@ -39,11 +41,14 @@ def main() -> int:
             raise ValueError("native.train.args must be an object")
         values = dict(values)
         data, train, output = object_at(config, "data"), object_at(config, "train"), object_at(config, "output")
-        set_default(values, "root_dir", data.get("root_dir"))
-        set_default(values, "checkpoints_dir", output.get("checkpoint_dir"), str(destination / "checkpoints"))
+        set_from(values, "root_dir", data.get("root_dir"))
+        set_from(values, "train_csv", split_csv(data, "train"))
+        set_from(values, "val_csv", split_csv(data, "valid"))
+        set_from(values, "checkpoints_dir", output.get("checkpoint_dir"), str(destination / "checkpoints"))
         for key in ("batch_size", "learning_rate", "patch_size", "output_nc", "total_iteration", "save_per_iteration", "eval_interval", "num_workers", "samples_per_image", "seed", "preprocess"):
-            set_default(values, key, train.get(key), data.get(key))
-        set_default(values, "name", output.get("run_name"))
+            set_from(values, key, train.get(key), data.get(key))
+        set_from(values, "device", object_at(config, "runtime").get("device"))
+        set_from(values, "name", output.get("run_name"))
         values = resolve_known_paths(values, source)
         command = training_command(
             IMPLEMENTATION / "train_he2sp.py",

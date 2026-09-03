@@ -1,0 +1,5 @@
+slide_name,row,col,split,image_path,target_path
+slide_001,0,0,train,images/slide_001_patch_0_0.jpg,targets/slide_001_patch_0_0.npy
+slide_001,0,1,train,images/slide_001_patch_0_1.jpg,targets/slide_001_patch_0_1.npy
+slide_001,1,0,train,images/slide_001_patch_1_0.jpg,targets/slide_001_patch_1_0.npy
+slide_001,1,1,train,images/slide_001_patch_1_1.jpg,targets/slide_001_patch_1_1.npy

@@ -3,9 +3,13 @@
 The external interface is always:
 
 ```bash
-python -m heprobench train --method METHOD --config EXPERIMENT.json
-python -m heprobench infer --method METHOD --config EXPERIMENT.json
+python -m heprobench train --config EXPERIMENT.json
+python -m heprobench infer --config EXPERIMENT.json
 ```
+
+`method.name` in the JSON selects the runner. `--method METHOD` remains an
+optional explicit override and must agree with the JSON value. It is still
+required by the retained legacy YAML demo.
 
 Use `--dry-run` to write the resolved configuration and print both the runner
 command and the final native command without importing a model stack or
@@ -23,6 +27,18 @@ materialized native config when applicable, and `native_command.json`.
 - `native.train` / `native.infer`: parameters that belong only to the retained
   original program.
 
+Shared fields are the public control surface. For example,
+`train.batch_size`, `train.learning_rate`, and `runtime.device` are translated
+to the corresponding native arguments and take precedence over defaults under
+`native.train`. This means the following command really launches ROSIE with a
+batch size of 3:
+
+```bash
+python -m heprobench train \
+  --config configs/demo/rosie.json \
+  --batch-size 3
+```
+
 Relative paths are resolved from the user-authored JSON, not from the runner's
 working directory. `extends` accepts a JSON path or a list of paths and performs
 a recursive object merge. This is how all foundation-model experiments inherit
@@ -32,7 +48,6 @@ one DPT comparison protocol.
 
 ```bash
 python -m heprobench train \
-  --method hex \
   --config configs/experiments/hex.json \
   --device cuda:1 \
   --batch-size 8 \
@@ -76,3 +91,8 @@ Gated Hugging Face models read `HF_TOKEN` from the environment. Tokens must not
 be written into source files or JSON. Local-only weights are referenced by path
 in their encoder JSON. `methods/pfm/specs.json` explicitly marks revisions and
 checksums that still need pinning before an archival reproducibility release.
+
+The `miphei_vit` and `dpt_fm` demo JSON files deliberately use an unpretrained
+H0-mini encoder. They exercise the retained decoder and training pipeline
+without downloading a gated multi-gigabyte checkpoint; formal encoder JSONs
+retain their pretrained foundation-model settings.

@@ -1,0 +1,7 @@
+{
+  "DAPI": {"mean": 46.1242, "std": 9.6531, "channel_idx": 0, "is_structural": true},
+  "CD3": {"mean": 139.9664, "std": 37.7826, "channel_idx": 1, "is_structural": false},
+  "CD20": {"mean": 127.9261, "std": 49.9177, "channel_idx": 2, "is_structural": false},
+  "PanCK": {"mean": 104.5016, "std": 16.2514, "channel_idx": 3, "is_structural": true},
+  "RGB": {"mean": [211.8089, 214.0366, 245.6761], "std": [35.3473, 25.7775, 13.7722]}
+}

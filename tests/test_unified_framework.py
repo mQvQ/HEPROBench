@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 import tempfile
 import unittest
@@ -14,6 +15,21 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class RegistryTests(unittest.TestCase):
+    def test_bundled_demo_has_train_valid_test_data(self) -> None:
+        expected_counts = {"train": 4, "valid": 2, "test": 2}
+        root = ROOT / "demo_data"
+        channel_names = json.loads((root / "channel_names.json").read_text(encoding="utf-8"))
+        self.assertEqual(channel_names, ["DAPI", "CD3", "CD20", "PanCK"])
+        self.assertTrue((root / "channel_stats.json").is_file())
+        for split, expected_count in expected_counts.items():
+            with self.subTest(split=split):
+                with (root / "splits" / f"{split}.csv").open(newline="", encoding="utf-8") as handle:
+                    rows = list(csv.DictReader(handle))
+                self.assertEqual(len(rows), expected_count)
+                for row in rows:
+                    self.assertTrue((root / row["image_path"]).is_file())
+                    self.assertTrue((root / row["target_path"]).is_file())
+
     def test_method_registry_has_distinct_gigatime_variants(self) -> None:
         methods = load_method_registry()
         self.assertEqual(len(methods), 10)
@@ -49,7 +65,7 @@ class DryRunTests(unittest.TestCase):
         "cut": ("configs/experiments/cut.json", "train.py"),
         "pix2pix": ("configs/experiments/pix2pix.json", "train.py"),
         "cyclegan": ("configs/experiments/cyclegan.json", "train.py"),
-        "histoplexer": ("configs/experiments/histoplexer.json", "bin.train_ddp"),
+        "histoplexer": ("configs/experiments/histoplexer.json", "bin.train_ddp_imc01"),
         "gigatime_original": ("configs/experiments/gigatime_original.json", "db_train.py"),
         "gigatime_reg": ("configs/experiments/gigatime_reg.json", "run.py"),
         "miphei_vit": ("configs/experiments/miphei_vit.json", "run.py"),
@@ -100,6 +116,119 @@ class DryRunTests(unittest.TestCase):
                     overrides=['model.encoder.name="musk"'],
                     dry_run=True,
                 )
+
+    def test_json_method_name_is_sufficient_and_shared_batch_size_wins(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = dispatch_method_task(
+                task="train",
+                method_name=None,
+                config_path=ROOT / "configs" / "experiments" / "rosie.json",
+                output_dir=temp_dir,
+                overrides=["train.batch_size=3"],
+                dry_run=True,
+            )
+        self.assertEqual(result["method"], "rosie")
+        self.assertIn("--batch_size 3", result["native"]["command"])
+        self.assertNotIn("--batch_size 64", result["native"]["command"])
+
+    def test_demo_configs_use_bundled_split_csvs(self) -> None:
+        demo_configs = sorted((ROOT / "configs" / "demo").glob("*.json"))
+        demo_configs = [path for path in demo_configs if not path.name.startswith("_")]
+        self.assertEqual(len(demo_configs), 10)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for config_path in demo_configs:
+                with self.subTest(config=config_path.name):
+                    result = dispatch_method_task(
+                        task="train",
+                        method_name=None,
+                        config_path=config_path,
+                        output_dir=str(Path(temp_dir) / config_path.stem),
+                        dry_run=True,
+                    )
+                    self.assertTrue(result["native"]["command"])
+
+    def test_demo_inference_configs_match_four_channel_bundle(self) -> None:
+        demo_configs = sorted((ROOT / "configs" / "demo").glob("*.json"))
+        demo_configs = [path for path in demo_configs if not path.name.startswith("_")]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for config_path in demo_configs:
+                with self.subTest(config=config_path.name):
+                    result = dispatch_method_task(
+                        task="infer",
+                        method_name=None,
+                        config_path=config_path,
+                        output_dir=str(Path(temp_dir) / config_path.stem),
+                        dry_run=True,
+                    )
+                    native_path = result["native"].get("native_config")
+                    self.assertTrue(native_path)
+                    payload = json.loads(Path(native_path).read_text(encoding="utf-8"))
+                    if "output_nc" in payload:
+                        self.assertEqual(payload["output_nc"], 4)
+
+    def test_shared_batch_size_reaches_each_native_pipeline(self) -> None:
+        direct_args = {
+            "rosie": "--batch_size 3",
+            "hex": "--batch_size_per_gpu 3",
+            "cut": "--batch_size 3",
+            "pix2pix": "--batch_size 3",
+            "cyclegan": "--batch_size 3",
+            "gigatime_original": "--batch_size 3",
+        }
+        config_backed = {
+            "histoplexer": ("batch_size",),
+            "gigatime_reg": ("train", "batch_size"),
+            "miphei_vit": ("train", "batch_size"),
+            "dpt_fm_h0-mini": ("train", "batch_size"),
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for stem, expected_arg in direct_args.items():
+                with self.subTest(method=stem):
+                    result = dispatch_method_task(
+                        task="train",
+                        method_name=None,
+                        config_path=ROOT / "configs" / "demo" / f"{stem}.json",
+                        output_dir=str(Path(temp_dir) / stem),
+                        batch_size=3,
+                        dry_run=True,
+                    )
+                    self.assertIn(expected_arg, result["native"]["command"])
+
+            for stem, keys in config_backed.items():
+                with self.subTest(method=stem):
+                    result = dispatch_method_task(
+                        task="train",
+                        method_name=None,
+                        config_path=ROOT / "configs" / "demo" / f"{stem}.json",
+                        output_dir=str(Path(temp_dir) / stem),
+                        batch_size=3,
+                        dry_run=True,
+                    )
+                    payload = json.loads(Path(result["native"]["native_config"]).read_text(encoding="utf-8"))
+                    value = payload
+                    for key in keys:
+                        value = value[key]
+                    self.assertEqual(value, 3)
+
+    def test_formal_defaults_match_recorded_training_runs(self) -> None:
+        rosie, _ = load_experiment_config(ROOT / "configs" / "experiments" / "rosie.json")
+        self.assertEqual(rosie["train"]["batch_size"], 8)
+        self.assertEqual(rosie["data"]["patch_size"], 128)
+        self.assertEqual(rosie["train"]["samples_per_image"], 16)
+
+        cut, _ = load_experiment_config(ROOT / "configs" / "experiments" / "cut.json")
+        self.assertEqual(cut["train"]["batch_size"], 8)
+
+        cycle, _ = load_experiment_config(ROOT / "configs" / "experiments" / "cyclegan.json")
+        self.assertEqual(cycle["native"]["train"]["args"]["input_nc"], 3)
+        self.assertEqual(cycle["native"]["train"]["args"]["dataset_mode"], "HE2SP")
+
+        histo, _ = load_experiment_config(ROOT / "configs" / "experiments" / "histoplexer.json")
+        self.assertEqual(histo["train"]["batch_size"], 8)
+        self.assertEqual(histo["train"]["seed"], 96)
+        self.assertEqual(histo["native"]["train"]["launcher"]["nproc_per_node"], 2)
+        self.assertEqual(histo["native"]["train"]["config"]["output_nc"], 60)
+        self.assertEqual(histo["native"]["infer"]["config"]["output_nc"], 60)
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@
   "runtime": {"device": "cuda:0"},
   "output": {"run_dir": "../../outputs/hex"},
   "native": {
-    "train": {"launcher": {"type": "torchrun", "nproc_per_node": 8}, "args": {"panel_key": "default", "norm": "imagenet", "label_scale": 255.0, "fds_bins": 100, "fds_start_update": 0, "fds_start_apply": 10}},
+    "train": {"launcher": {"type": "python"}, "args": {"panel_key": "default", "norm": "imagenet", "label_scale": 255.0, "fds_bins": 100, "fds_start_update": 0, "fds_start_apply": 10, "distributed": false}},
     "infer": {"config": {"stride": 14, "patch_size": 256, "crop_size": 224, "img_size": 384, "musk_img_size": 384, "norm": "imagenet", "pred_scale": 255.0, "compression": "lzf", "overwrite": false}}
   }
 }

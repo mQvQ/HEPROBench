@@ -43,11 +43,13 @@ class PatchDataset(Dataset):
 
 class CustomDataset(Dataset):
 
-    def __init__(self, dataroot, phase, panel_key, transform=None):
+    def __init__(self, dataroot, phase, panel_key, transform=None, csv_path=None):
         self.dataroot = dataroot
         self.phase = phase
         self.panel_key = panel_key
-        if self.panel_key == 'panel-1' or self.panel_key == 'panel-2':
+        if csv_path:
+            self.df = pd.read_csv(csv_path)
+        elif self.panel_key == 'panel-1' or self.panel_key == 'panel-2':
             if self.phase == "train":
                 self.df = pd.read_csv(os.path.join(self.dataroot, f"train_filter_dapi_std_11_inv_red_nmi_003_patch_meta_{self.panel_key}.csv"))
             elif self.phase == "valid":

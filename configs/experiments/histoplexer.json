@@ -1,14 +1,14 @@
 {
   "schema_version": "heprobench_experiment_v1",
   "method": {"name": "histoplexer"},
-  "data": {"src_folder": "../../data/he", "tgt_folder": "../../data/multiplex", "split": "../../data/splits.csv", "vgg_path": "../../checkpoints/vgg19_model.pth", "csv_path": "../../data/patches/{split}_patch_meta.csv", "root_dir": "../../data/patches", "channel_names_file": "../../data/channel_names.json", "csv_columns": {"image_path": "image_path", "target_path": "target_path", "slide_name": "slide_name"}, "patch_size": 256},
-  "train": {"batch_size": 16, "num_workers": 4, "total_steps": 100000, "log_interval": 100, "save_interval": 10000, "seed": 0},
+  "data": {"src_folder": "../../data/he", "tgt_folder": "../../data/multiplex", "split": "../../data/splits.csv", "vgg_path": null, "csv_path": "../../data/patches/{split}_patch_meta.csv", "root_dir": "../../data/patches", "channel_names_file": "../../data/channel_names.json", "csv_columns": {"image_path": "image_path", "target_path": "target_path", "slide_name": "slide_name"}, "patch_size": 256},
+  "train": {"batch_size": 8, "num_workers": 0, "total_steps": 100000, "log_interval": 100, "save_interval": 20000, "seed": 96},
   "model": {"checkpoint_path": "../../checkpoints/histoplexer/checkpoint-step_100000.pt"},
   "inference": {"split": "test", "batch_size": 8, "num_workers": 4},
   "runtime": {"device": "cuda:0"},
   "output": {"run_dir": "../../outputs/histoplexer"},
   "native": {
-    "train": {"launcher": {"type": "torchrun", "nproc_per_node": 8}, "config": {"cohort": "benchmark", "method": "ours", "markers": ["DAPI", "CD3", "CD20"], "output_nc": 3, "use_high_res": false, "use_multiscale": true, "use_gp": true, "w_L1": 1.0, "w_GP": 5.0, "w_ASP": 1.0, "w_R1": 1.0, "r1_gamma": 0.0002, "ngf": 32, "depth": 6}},
-    "infer": {"config": {"output_nc": 3, "patch_size": 256, "he_patch_size": 256, "compression": "lzf", "overwrite": false}}
+    "train": {"launcher": {"type": "torchrun", "nproc_per_node": 2}, "entrypoint": "imc01", "config": {"cohort": "multi-tumor-codex", "method": "ours_ddp_imc01", "markers": ["HOECHST2", "CD79a", "FOXP3", "CDX2", "CD8", "p53", "GATA3", "CD21", "PD-L1", "Ki67", "CD45", "CD30", "PAX5", "HLA-DR", "CD5", "CD2", "CD45RA", "CD4", "PD-1", "MUC-1", "BCL2", "CD56", "Cytokeratin 7", "CD25", "VISTA", "Hep-Par-1", "CD11c", "IRF4", "CD20", "EGFR", "IDO-1", "Granzyme B", "Melan A", "OX-40", "Vimentin", "Synaptophysin", "CD117 (c-kit)", "Na-K-ATPase", "CD194", "CD57", "Pan-Cytokeratin", "CD68", "CD3", "SMA", "CD34", "EpCAM", "Collagen IV", "CD45RO", "Podoplanin", "CD15", "CD7", "CD163", "Chromogranin A", "CD31", "CD123", "MMP9", "CD138", "CD38", "Hyaluronan", "DRAQ5"], "output_nc": 60, "val": false, "use_high_res": false, "use_multiscale": true, "use_gp": true, "w_L1": 1.0, "w_GP": 5.0, "w_ASP": 1.0, "w_R1": 1.0, "r1_gamma": 0.0002, "ngf": 32, "depth": 6, "lr_G": 0.004, "lr_D": 0.00025, "lr_F": 0.004, "beta_0": 0.5, "beta_1": 0.999, "use_feat_enc": true, "ema_warmup": 5000, "r1_interval": 16, "ddp": {"enabled": true, "world_size": 2, "backend": "nccl"}}},
+    "infer": {"config": {"output_nc": 60, "patch_size": 256, "he_patch_size": 256, "compression": "lzf", "overwrite": false}}
   }
 }

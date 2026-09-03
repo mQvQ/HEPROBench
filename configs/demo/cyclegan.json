@@ -1,0 +1,18 @@
+{
+  "extends": "../experiments/cyclegan.json",
+  "data": {
+    "root_dir": "../../demo_data",
+    "train_csv": "../../demo_data/splits/train.csv",
+    "val_csv": "../../demo_data/splits/valid.csv",
+    "test_csv": "../../demo_data/splits/test.csv",
+    "csv_path": "../../demo_data/splits/{split}.csv",
+    "channel_names_file": "../../demo_data/channel_names.json"
+  },
+  "train": {"batch_size": 1, "num_workers": 0, "n_iters": 1, "n_iters_decay": 0, "save_latest_freq": 1000},
+  "runtime": {"device": "cpu"},
+  "output": {"run_dir": "../../outputs/demo/cyclegan", "run_name": "cyclegan-demo"},
+  "native": {
+    "train": {"args": {"input_nc": 3, "output_nc": 4, "display_id": -1, "save_by_iter": false}},
+    "infer": {"config": {"input_nc": 3, "output_nc": 4, "checkpoints_dir": "../../outputs/demo/cyclegan/checkpoints", "name": "cyclegan-demo"}}
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "extends": "../experiments/gigatime_original.json",
+  "data": {
+    "root_dir": "../../demo_data",
+    "train_csv": "../../demo_data/splits/train.csv",
+    "val_csv": "../../demo_data/splits/valid.csv",
+    "test_csv": "../../demo_data/splits/test.csv",
+    "csv_path": "../../demo_data/splits/{split}.csv",
+    "channel_names_file": "../../demo_data/channel_names.json"
+  },
+  "train": {"epochs": 1, "batch_size": 1, "num_workers": 0, "window_size": 64},
+  "runtime": {"device": "cpu"},
+  "output": {"run_dir": "../../outputs/demo/gigatime_original", "run_name": "gigatime-original-demo"},
+  "model": {"checkpoint_path": "../../outputs/demo/gigatime_original/models/gigatime-original-demo/model.pth"},
+  "native": {
+    "train": {"args": {"num_classes": 4, "input_w": 64, "input_h": 64, "window_size": 64, "binary_threshold": 100.0, "scheduler": "ConstantLR"}},
+    "infer": {"config": {"output_nc": 4, "model_config": {"architecture": "gigatime", "model_args": {"in_chans": 3, "img_size": 64}}}}
+  }
+}

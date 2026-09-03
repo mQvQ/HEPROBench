@@ -20,6 +20,7 @@ from typing import Any, Iterable, Mapping
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PATH_KEYS = {
     "base_save_path",
+    "augmentation_dir",
     "channel_names_file",
     "channel_stats_path",
     "checkpoint",
@@ -34,17 +35,22 @@ PATH_KEYS = {
     "out_root",
     "output_dir",
     "panel_dir",
+    "prediction_dir",
     "pretrained_ckpt",
     "resume_path",
     "root_dir",
     "save_dir",
     "split",
+    "slide_dataframe_path",
     "src_folder",
     "test_dataframe_path",
+    "test_csv",
     "tgt_folder",
     "tiling_dir",
     "train_dataframe_path",
+    "train_csv",
     "val_dataframe_path",
+    "val_csv",
     "vgg_path",
 }
 
@@ -137,6 +143,35 @@ def set_default(mapping: dict[str, Any], key: str, *values: Any) -> None:
         value = first(*values)
         if value is not None:
             mapping[key] = value
+
+
+def set_from(mapping: dict[str, Any], key: str, *values: Any) -> None:
+    """Set ``key`` from the first shared value that is explicitly present.
+
+    Method-specific ``native`` settings are defaults.  Shared top-level JSON
+    fields are the public API and therefore must win when both are provided.
+    """
+
+    value = first(*values)
+    if value is not None:
+        mapping[key] = value
+
+
+def split_csv(data: Mapping[str, Any], phase: str) -> Any:
+    """Return the explicit CSV for a phase, falling back to ``csv_path``.
+
+    A ``{split}`` placeholder is expanded here so native programs never need
+    to know about the unified configuration convention.
+    """
+
+    aliases = {"val": "valid", "validation": "valid", "infer": "test"}
+    normalized = aliases.get(phase, phase)
+    value = first(data.get(f"{normalized}_csv"), data.get(f"{normalized}_dataframe_path"))
+    if value is None:
+        value = data.get("csv_path")
+    if isinstance(value, str):
+        return value.replace("{split}", normalized)
+    return value
 
 
 def deep_merge(base: Mapping[str, Any], updates: Mapping[str, Any]) -> dict[str, Any]:
@@ -253,20 +288,20 @@ def inference_payload(
     output = object_at(config, "output")
     runtime = object_at(config, "runtime")
 
-    set_default(payload, "csv_path", inference.get("csv_path"), data.get("csv_path"))
-    set_default(payload, "root_dir", data.get("root_dir"))
-    set_default(payload, "channel_names_file", data.get("channel_names_file"))
-    set_default(payload, "split", inference.get("split"), data.get("split"))
-    set_default(payload, "batch_size", inference.get("batch_size"))
-    set_default(payload, "num_workers", inference.get("num_workers"))
-    set_default(payload, "checkpoint_path", model.get("checkpoint_path"), model.get("checkpoint"))
-    set_default(payload, "checkpoint_dir", model.get("checkpoint_dir"))
-    set_default(payload, "out_root", output.get("prediction_dir"), output.get("pred_dir"))
+    inference_split = str(inference.get("split") or data.get("split") or "test")
+    set_from(payload, "csv_path", inference.get("csv_path"), split_csv(data, inference_split))
+    set_from(payload, "root_dir", data.get("root_dir"))
+    set_from(payload, "channel_names_file", data.get("channel_names_file"))
+    set_from(payload, "split", inference_split)
+    set_from(payload, "batch_size", inference.get("batch_size"))
+    set_from(payload, "num_workers", inference.get("num_workers"))
+    set_from(payload, "checkpoint_path", model.get("checkpoint_path"), model.get("checkpoint"))
+    set_from(payload, "checkpoint_dir", model.get("checkpoint_dir"))
+    set_from(payload, "out_root", output.get("prediction_dir"), output.get("pred_dir"))
     set_default(payload, "method_name", method_name)
     if "csv_columns" not in payload and isinstance(data.get("csv_columns"), dict):
         payload["csv_columns"] = data["csv_columns"]
-    if runtime.get("device") and "device" not in payload:
-        payload["device"] = runtime["device"]
+    set_from(payload, "device", runtime.get("device"))
     return resolve_known_paths(payload, source_path), task_config
 
 

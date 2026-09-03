@@ -1,0 +1,23 @@
+{
+  "extends": "../experiments/histoplexer.json",
+  "data": {
+    "src_folder": "../../demo_data",
+    "tgt_folder": "../../demo_data",
+    "split": "../../demo_data/splits/train.csv",
+    "train_csv": "../../demo_data/splits/train.csv",
+    "val_csv": "../../demo_data/splits/valid.csv",
+    "test_csv": "../../demo_data/splits/test.csv",
+    "csv_path": "../../demo_data/splits/{split}.csv",
+    "root_dir": "../../demo_data",
+    "channel_names_file": "../../demo_data/channel_names.json",
+    "vgg_path": null
+  },
+  "train": {"batch_size": 1, "num_workers": 0, "total_steps": 1, "save_interval": 1, "seed": 96},
+  "model": {"checkpoint_path": "../../outputs/demo/histoplexer/synthetic-demo_ours_imc01_channels-all_seed-96/checkpoint-step_1.pt"},
+  "runtime": {"device": "cpu"},
+  "output": {"run_dir": "../../outputs/demo/histoplexer"},
+  "native": {
+    "train": {"launcher": {"type": "python"}, "config": {"cohort": "synthetic-demo", "method": "ours_imc01", "markers": ["DAPI", "CD3", "CD20", "PanCK"], "output_nc": 4, "val": false, "use_feat_enc": false, "ddp": {"enabled": false, "world_size": 1, "backend": "gloo"}}},
+    "infer": {"config": {"output_nc": 4}}
+  }
+}

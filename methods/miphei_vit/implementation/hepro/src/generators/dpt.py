@@ -377,9 +377,9 @@ class DPT(nn.Module):
         return pred
 
 
-def get_dpt(encoder_name, img_size, num_classes, use_lora=False, frozen=True, ckpt_path=None, drop_path_rate=0):
+def get_dpt(encoder_name, img_size, num_classes, use_lora=False, frozen=True, ckpt_path=None, drop_path_rate=0, pretrained=True):
     vit = FOUNDATION_MODEL_REGISTRY[encoder_name](
-        img_size, ckpt_path=ckpt_path, drop_path_rate=drop_path_rate, global_pool="")
+        img_size, pretrained=pretrained, ckpt_path=ckpt_path, drop_path_rate=drop_path_rate, global_pool="")
     if use_lora:
         apply_lora(vit, rank=8, alpha=1.)
         model = DPT(encoder=vit, img_size=img_size, num_classes=num_classes, lora=True)

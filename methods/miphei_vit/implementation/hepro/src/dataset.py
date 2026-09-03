@@ -25,6 +25,7 @@ class DataModule:
                  targ_channel_idxs: list, batch_size: int, input_shape: Tuple[int, int],
                  from_slide: bool = False, pin_memory: bool = True,
                  return_nuclei: bool = False, train_sampler: Sampler = None,
+                 num_workers: int = 8,
                  preprocess_input_fn=None, preprocess_target_fn=None):
         self.slide_dataframe = slide_dataframe
         self.train_dataframe = train_dataframe
@@ -41,7 +42,7 @@ class DataModule:
         self.preprocess_target_fn = preprocess_target_fn
         self.input_shape = input_shape
 
-        self.num_workers = 8
+        self.num_workers = int(num_workers)
 
         self.train_dataset = None
         self.val_dataset = None

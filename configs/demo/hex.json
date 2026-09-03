@@ -1,0 +1,15 @@
+{
+  "extends": "../experiments/hex.json",
+  "data": {
+    "root_dir": "../../demo_data",
+    "train_csv": "../../demo_data/splits/train.csv",
+    "val_csv": "../../demo_data/splits/valid.csv",
+    "test_csv": "../../demo_data/splits/test.csv",
+    "csv_path": "../../demo_data/splits/{split}.csv",
+    "channel_names_file": "../../demo_data/channel_names.json"
+  },
+  "train": {"batch_size": 1, "max_iters": 1, "num_workers": 0, "stage1_iters": 1},
+  "runtime": {"device": "cuda:0"},
+  "output": {"run_dir": "../../outputs/demo/hex"},
+  "native": {"train": {"launcher": {"type": "python"}, "args": {"no_musk_pretrained": true}}}
+}

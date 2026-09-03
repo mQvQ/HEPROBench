@@ -28,11 +28,13 @@ class CustomModelFDS(nn.Module):
         *,
         fds_config: Optional[FDSConfig] = None,
         musk_img_size: int = 384,
+        pretrained: bool = True,
     ) -> None:
         super().__init__()
         model_config = f"musk_large_patch16_{int(musk_img_size)}"
         model_musk = create_model(model_config, vocab_size=64010)
-        utils.load_model_and_may_interpolate("hf_hub:xiangjx/musk", model_musk, "model|module", "")
+        if pretrained:
+            utils.load_model_and_may_interpolate("hf_hub:xiangjx/musk", model_musk, "model|module", "")
         self.visual = model_musk
 
         self.regression_head = nn.Sequential(

@@ -182,7 +182,13 @@ class HistoplexerTrainer(BaseTrainer):
             else:
                 dummy_device = self.device
 
-            dummy_input = self.E(torch.randn([self.config.batch_size, 1, self.config.patch_size, self.config.patch_size], device=dummy_device))
+            if self.E is not None:
+                dummy_input = self.E(torch.randn([self.config.batch_size, 1, self.config.patch_size, self.config.patch_size], device=dummy_device))
+            else:
+                dummy_input = self.G(
+                    torch.randn([self.config.batch_size, self.config.input_nc, self.config.patch_size, self.config.patch_size], device=dummy_device),
+                    encode_only=True,
+                )
             self.F.init_model(dummy_input=dummy_input)
 
             # Wrap F with DDP if in distributed mode

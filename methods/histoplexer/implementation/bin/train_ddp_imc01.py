@@ -107,7 +107,7 @@ def main_worker(rank, world_size, config_path):
     seed_everything(seed=config.seed, device=device)
 
     train_dataset = TuProDatasetIMC01(
-        split=config.split,
+        split=config.train_csv or config.split,
         mode="train",
         src_folder=config.src_folder,
         tgt_folder=config.tgt_folder,
@@ -124,7 +124,7 @@ def main_worker(rank, world_size, config_path):
 
     if config.val:
         val_dataset = TuProDatasetIMC01(
-            split=config.split,
+            split=config.val_csv or config.split,
             mode="valid",
             src_folder=config.src_folder,
             tgt_folder=config.tgt_folder,

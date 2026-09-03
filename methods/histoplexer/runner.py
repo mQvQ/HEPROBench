@@ -18,6 +18,8 @@ from methods.runner_utils import (
     resolve_known_paths,
     run_dir,
     set_default,
+    set_from,
+    split_csv,
     training_command,
     write_json,
 )
@@ -45,26 +47,29 @@ def main() -> int:
             object_at(config, "runtime"),
         )
         for key in ("src_folder", "tgt_folder", "split", "vgg_path", "fm_features_path"):
-            set_default(payload, key, data.get(key))
+            set_from(payload, key, data.get(key))
+        set_from(payload, "train_csv", split_csv(data, "train"))
+        set_from(payload, "val_csv", split_csv(data, "valid"))
+        set_from(payload, "test_csv", split_csv(data, "test"))
         for key in ("batch_size", "num_workers", "patch_size", "seed", "total_steps", "log_interval", "save_interval"):
-            set_default(payload, key, train.get(key), data.get(key))
-        set_default(payload, "base_save_path", output.get("checkpoint_dir"), str(destination))
-        set_default(payload, "device", runtime.get("device"))
+            set_from(payload, key, train.get(key), data.get(key))
+        set_from(payload, "base_save_path", output.get("checkpoint_dir"), str(destination))
+        set_from(payload, "device", runtime.get("device"))
         payload = resolve_known_paths(payload, source)
         native_path = write_json(payload, destination / "native_train_config.json")
         launcher = task_cfg.get("launcher", {})
         distributed = isinstance(launcher, dict) and str(launcher.get("type", "python")).lower() == "torchrun"
         if distributed:
             command = training_command(
-                IMPLEMENTATION / "bin" / "train_ddp.py",
+                IMPLEMENTATION / "bin" / "train_ddp_imc01.py",
                 ["--config_path", str(native_path)],
                 config,
                 task_cfg,
-                module="bin.train_ddp",
+                module="bin.train_ddp_imc01",
             )
         else:
             command = python_command(
-                IMPLEMENTATION / "bin" / "train.py",
+                IMPLEMENTATION / "bin" / "train_imc01.py",
                 ["--config_path", str(native_path)],
                 config,
             )

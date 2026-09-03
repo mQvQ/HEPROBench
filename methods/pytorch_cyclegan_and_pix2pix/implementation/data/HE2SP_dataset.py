@@ -70,7 +70,16 @@ class HE2SPDataset(BaseDataset):
         BaseDataset.__init__(self, opt)
 
         self.panel_key = opt.panel_key  # 'panel-1 or panel-2'
-        if opt.phase == "train":
+        explicit_csv = {
+            "train": opt.train_csv,
+            "valid": opt.val_csv,
+            "val": opt.val_csv,
+            "infer": opt.test_csv,
+            "test": opt.test_csv,
+        }.get(opt.phase)
+        if explicit_csv:
+            self.df = pd.read_csv(explicit_csv)
+        elif opt.phase == "train":
             self.df = pd.read_csv(os.path.join(opt.dataroot, f"train_filter_dapi_std_11_inv_red_nmi_003_patch_meta.csv"))
         elif opt.phase == "valid":
             self.df = pd.read_csv(os.path.join(opt.dataroot, f"valid_filter_dapi_std_11_inv_red_nmi_003_patch_meta.csv"))

@@ -142,6 +142,8 @@ class BaseModel(ABC):
         return uint8_image
 
     def parallelize(self):
+        if not self.opt.gpu_ids:
+            return
         for name in self.model_names:
             if isinstance(name, str):
                 net = getattr(self, 'net' + name)

@@ -12,7 +12,8 @@ dependencies:
   - pillow
   - h5py
   - pyyaml
+  - libvips
   - pip
   - pip:
+      - -r requirements-full.txt
       - -e .
-

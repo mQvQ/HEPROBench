@@ -35,7 +35,8 @@ def train_patchgan(cfg, logdir):
     log = logging.getLogger(__name__)
     log.info(OmegaConf.to_yaml(cfg))
     pyvips.cache_set_max(0)
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    requested_device = cfg.get("runtime", {}).get("device", None)
+    device = str(requested_device or ("cuda" if torch.cuda.is_available() else "cpu"))
     log.info("device: {}".format(device))
 
     logdir = Path(logdir)
@@ -116,6 +117,7 @@ def train_patchgan(cfg, logdir):
         targ_channel_idxs=targ_channel_idxs, from_slide=from_slide,
         input_shape=(width, height),
         batch_size=cfg.train.batch_size, pin_memory=device!="cpu",
+        num_workers=cfg.train.get("num_workers", 8),
         return_nuclei=cfg.train.use_cell_metrics, train_sampler=train_sampler,
         preprocess_input_fn=preprocess_input_fn, preprocess_target_fn=preprocess_target_fn,
         )
@@ -203,8 +205,9 @@ def train_patchgan(cfg, logdir):
     logger_name = logdir.name
     wandb_note = cfg.train.wandb_note
     wandb_note = update_wandb_note(wandb_note)
+    wandb_mode = str(cfg.train.get("wandb_mode", "offline"))
     logger = WandbLogger(project=cfg.train.wandb_project, name=logger_name, notes=wandb_note,
-                         log_model=False, save_dir=str(logdir), force=True, reinit=True)
+                         log_model=False, save_dir=str(logdir), offline=wandb_mode != "online")
     cfg_path = str(logdir / "config.yaml")
     OmegaConf.save(cfg, cfg_path)
     wandb_log_artifact(logger, "cfg", "config", cfg_path)
@@ -214,14 +217,15 @@ def train_patchgan(cfg, logdir):
     config_callback = cfg.train.callbacks
     ckpt_dirpath = str(Path(ckpt_weights).parent)
     ckpt_filename = str(Path(ckpt_weights).name)
+    checkpoint_callback = ModelCheckpoint(
+        dirpath=ckpt_dirpath, filename=ckpt_filename,
+        monitor=config_callback.modelcheckpoint.monitor,
+        save_top_k=1,
+        mode=config_callback.modelcheckpoint.mode, save_last=False,
+        save_weights_only=True, verbose=1)
     callbacks = [
         DebugImageLogger("logs_img", batch_frequency=1000, max_images=4, clamp=True),
-        ModelCheckpoint(
-            dirpath=ckpt_dirpath, filename=ckpt_filename,
-            monitor=config_callback.modelcheckpoint.monitor,
-            save_top_k=1,
-            mode=config_callback.modelcheckpoint.mode, save_last=False,
-            save_weights_only=True, verbose=1),
+        checkpoint_callback,
         WandbVisCallback(preprocess_input_fn.unormalize, num_samples=4),
         #SwitchGenDiscTrain()
     ]
@@ -237,12 +241,14 @@ def train_patchgan(cfg, logdir):
 
     #limit_train_batches=100, limit_val_batches=100, limit_test_batches=100)
 
+    use_gpu = str(device).startswith("cuda")
+    lightning_devices = [int(str(device).split(":", 1)[1])] if use_gpu and ":" in str(device) else 1
     trainer_kwargs = dict(
         callbacks=callbacks,
         logger=logger,
-        accelerator="gpu",
-        precision=cfg.train.precision,
-        devices=1,
+        accelerator="gpu" if use_gpu else "cpu",
+        precision=cfg.train.precision if use_gpu else "32-true",
+        devices=lightning_devices,
         accumulate_grad_batches=cfg.train.accumulate_grad_batches,
     )
     max_steps = cfg.train.get("max_steps", None)
@@ -262,5 +268,9 @@ def train_patchgan(cfg, logdir):
     trainer = Trainer(**trainer_kwargs)
 
     trainer.fit(pl_model, train_dataloader, val_dataloader)
-    trainer.test(pl_model, test_dataloader, ckpt_path=ckpt_weights + ".ckpt", verbose=True)
+    checkpoint_path = checkpoint_callback.best_model_path
+    if not checkpoint_path:
+        checkpoint_path = ckpt_weights + ".ckpt"
+        trainer.save_checkpoint(checkpoint_path, weights_only=True)
+    trainer.test(pl_model, test_dataloader, ckpt_path=checkpoint_path, verbose=True)
     wandb.finish()

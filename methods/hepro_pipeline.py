@@ -73,6 +73,8 @@ def run_hepro(
         payload = deep_merge(payload, {"data": object_at(config, "data")})
         payload = deep_merge(payload, {"train": object_at(config, "train")})
         payload = deep_merge(payload, {"model": _model_config(config, variant, encoder)})
+        payload = deep_merge(payload, {"runtime": object_at(config, "runtime")})
+        payload = deep_merge(payload, {"output": {**object_at(config, "output"), "run_dir": str(destination)}})
         payload = resolve_known_paths(payload, source)
         native_path = write_yaml_compatible_json(payload, destination / "native_train_config.yaml")
         extra = task_cfg.get("hydra_overrides", [])

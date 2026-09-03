@@ -195,8 +195,8 @@ def wandb_log_artifact(logger, artifact_name: str, artifact_type: str, file_path
 
 def update_wandb_note(wandb_note):
     hydra_name = HydraConfig.get().job['override_dirname']
-    wandb_note = wandb_note + " /" + hydra_name
-    return wandb_note
+    parts = [str(part) for part in (wandb_note, hydra_name) if part]
+    return " /".join(parts) if parts else None
 
 
 def get_foreground_weight(channel_names, train_dataframe):

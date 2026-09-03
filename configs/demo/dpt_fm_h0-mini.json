@@ -1,0 +1,6 @@
+{
+  "extends": ["../foundation_models/h0-mini.json", "_hepro_overrides.json"],
+  "model": {"encoder": {"pretrained": false}},
+  "runtime": {"device": "cpu"},
+  "output": {"run_dir": "../../outputs/demo/dpt_fm/h0-mini"}
+}

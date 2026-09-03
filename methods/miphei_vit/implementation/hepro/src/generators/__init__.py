@@ -50,8 +50,9 @@ def get_generator(model_name, img_size, nc_in, nc_out, cfg):
             cfg.model.encoder.encoder_name, img_size, nc_out)
     elif model_name.startswith("myvitmatte"):
         ckpt_path = cfg.model.encoder.encoder_weights
+        pretrained = cfg.model.encoder.get("pretrained", True)
         generator = get_vitmatte(
-            cfg.model.encoder.encoder_name, img_size, nc_out, use_lora=cfg.model.use_lora, frozen=cfg.model.encoder.frozen, ckpt_path=ckpt_path)
+            cfg.model.encoder.encoder_name, img_size, nc_out, use_lora=cfg.model.use_lora, frozen=cfg.model.encoder.frozen, ckpt_path=ckpt_path, pretrained=pretrained)
     elif model_name.startswith("linear"):
         ckpt_path = cfg.model.encoder.encoder_weights
         if 'v2' in model_name:
@@ -68,8 +69,9 @@ def get_generator(model_name, img_size, nc_in, nc_out, cfg):
 
     elif model_name.startswith("dpt"):
         ckpt_path = cfg.model.encoder.encoder_weights
+        pretrained = cfg.model.encoder.get("pretrained", True)
         generator = get_dpt(
-            cfg.model.encoder.encoder_name, img_size, nc_out, use_lora=cfg.model.use_lora, frozen=cfg.model.encoder.frozen, ckpt_path=ckpt_path)
+            cfg.model.encoder.encoder_name, img_size, nc_out, use_lora=cfg.model.use_lora, frozen=cfg.model.encoder.frozen, ckpt_path=ckpt_path, pretrained=pretrained)
 
     elif model_name.startswith("hemit"):
         generator = get_generator_hemit(

@@ -1,9 +1,14 @@
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
 
 import torch
+
+project_root = Path(__file__).resolve().parents[1]
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
 
 from src.config.config import Config
 from src.dataset.dataset_imc01 import TuProDatasetIMC01
@@ -20,7 +25,7 @@ def main(args, device):
     seed_everything(seed=args.seed, device=device)
 
     train_dataset = TuProDatasetIMC01(
-        split=args.split,
+        split=args.train_csv or args.split,
         mode="train",
         src_folder=args.src_folder,
         tgt_folder=args.tgt_folder,
@@ -37,7 +42,7 @@ def main(args, device):
 
     if args.val:
         val_dataset = TuProDatasetIMC01(
-            split=args.split,
+            split=args.val_csv or args.split,
             mode="valid",
             src_folder=args.src_folder,
             tgt_folder=args.tgt_folder,

@@ -41,13 +41,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("infer", help="Run a method config and write HDF5 submission files")
     p.add_argument("--config", required=True)
-    p.add_argument("--method", required=True, help="Registry method name, or legacy demo method config")
+    p.add_argument("--method", default=None, help="Optional JSON method override, or required legacy demo method config")
     p.add_argument("--output", "--output-dir", dest="output_dir", default=None)
     _add_unified_run_arguments(p, task="inference")
 
     p = sub.add_parser("train", help="Run the registered method-specific training pipeline")
     p.add_argument("--config", required=True)
-    p.add_argument("--method", required=True, help="Registry method name, or legacy demo method config")
+    p.add_argument("--method", default=None, help="Optional JSON method override, or required legacy demo method config")
     p.add_argument("--output-dir", default=None, help="Unified run directory override")
     p.add_argument("--output-checkpoint", default=None, help="Legacy demo checkpoint output")
     p.add_argument("--epochs", type=int, default=None, help="Legacy demo epoch count")
@@ -121,6 +121,8 @@ def main(argv: list[str] | None = None) -> None:
         else:
             from .infer import run_inference
 
+            if not args.method:
+                parser.error("legacy YAML inference requires --method")
             if not args.output_dir:
                 parser.error("legacy YAML inference requires --output")
             _print_json(
@@ -150,6 +152,8 @@ def main(argv: list[str] | None = None) -> None:
         else:
             from .train import run_training
 
+            if not args.method:
+                parser.error("legacy YAML training requires --method")
             if not args.output_checkpoint:
                 parser.error("legacy YAML training requires --output-checkpoint")
             _print_json(

@@ -19,7 +19,7 @@ from .registry import resolve_encoder, resolve_method
 def dispatch_method_task(
     *,
     task: str,
-    method_name: str,
+    method_name: str | None,
     config_path: str | Path,
     encoder: str | None = None,
     split: str | None = None,
@@ -29,21 +29,29 @@ def dispatch_method_task(
     overrides: list[str] | None = None,
     dry_run: bool = False,
 ) -> dict[str, Any]:
+    raw_config, source_path = load_experiment_config(config_path)
+    configured_method = raw_config.get("method")
+    if isinstance(configured_method, dict):
+        configured_method = configured_method.get("name")
+    if not method_name:
+        method_name = str(configured_method or "").strip()
+    if not method_name:
+        raise ValueError(
+            f"No method selected: add method.name to {source_path} or pass --method"
+        )
     method = resolve_method(method_name)
     if task not in method.tasks:
         supported = ", ".join(sorted(method.tasks)) or "none"
         raise ValueError(f"Method '{method.name}' does not support task '{task}'. Supported: {supported}")
     if method.name == "dpt_fm":
         if not encoder:
-            raw, _ = load_experiment_config(config_path)
-            model = raw.get("model", {})
+            model = raw_config.get("model", {})
             encoder_block = model.get("encoder", {}) if isinstance(model, dict) else {}
             encoder = str(encoder_block.get("name", "")) if isinstance(encoder_block, dict) else ""
         if not encoder:
             raise ValueError("dpt_fm requires model.encoder.name in JSON or --encoder")
         resolve_encoder(encoder)
 
-    raw_config, source_path = load_experiment_config(config_path)
     resolved = resolve_experiment_config(
         raw_config,
         source_path=source_path,

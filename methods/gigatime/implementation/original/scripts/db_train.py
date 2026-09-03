@@ -3,12 +3,12 @@ import os
 import random
 from collections import OrderedDict
 from glob import glob
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import yaml
 import tqdm
-from scipy.stats import pearsonr, spearmanr
 
 import torch
 import torch.nn as nn
@@ -16,22 +16,19 @@ import torch.nn.functional as F
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader, Subset
+from PIL import Image
 
 import torchvision
 from torchvision.utils import save_image
 
-from albumentations.augmentations import transforms
-from albumentations.core.composition import Compose, OneOf
-from sklearn.model_selection import train_test_split
+import albumentations as A
 
-from easydict import EasyDict as edict
 from torch.optim import lr_scheduler
 
 # project-specific imports
 from archs import gigatime
 from losses import *
 from utils import *
-from prov_data import *
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -46,6 +43,14 @@ def parse_args():
                         help='Output directory')
     parser.add_argument('--tiling_dir', default="path_to_tiling_dir",
                         help='Output directory')
+    parser.add_argument('--train_csv', default=None,
+                        help='Unified train CSV with image_path,target_path')
+    parser.add_argument('--val_csv', default=None,
+                        help='Unified validation CSV with image_path,target_path')
+    parser.add_argument('--device', default=None,
+                        help='Explicit torch device')
+    parser.add_argument('--binary_threshold', default=127.5, type=float,
+                        help='Threshold applied to multiplex targets before BCE+Dice')
     parser.add_argument('--epochs', default=100, type=int, metavar='N',
                         help='number of total epochs to run')
     parser.add_argument('-b', '--batch_size', default=16, type=int,
@@ -106,13 +111,45 @@ def parse_args():
     parser.add_argument('--sigmoid', type=str2bool, default=True)
 
 
-    config = parser.parse_args()
-    from easydict import EasyDict as edict
-    return edict(vars(config))
-    return config
+    return parser.parse_args()
 
-mean = torch.tensor([0.485, 0.456, 0.406]).cuda()
-std = torch.tensor([0.229, 0.224, 0.225]).cuda()
+mean = torch.tensor([0.485, 0.456, 0.406])
+std = torch.tensor([0.229, 0.224, 0.225])
+
+
+class UnifiedBinaryDataset(torch.utils.data.Dataset):
+    """CSV adapter for the original GigaTIME binary-segmentation objective."""
+
+    def __init__(self, csv_path, root_dir, input_size, num_classes, threshold):
+        self.df = pd.read_csv(csv_path)
+        self.root_dir = Path(root_dir)
+        self.input_size = int(input_size)
+        self.num_classes = int(num_classes)
+        self.threshold = float(threshold)
+
+    def __len__(self):
+        return len(self.df)
+
+    def _path(self, value):
+        path = Path(str(value)).expanduser()
+        return path if path.is_absolute() else self.root_dir / path
+
+    def __getitem__(self, index):
+        row = self.df.iloc[index]
+        image_path = self._path(row['image_path'])
+        target_path = self._path(row['target_path'])
+        image = torch.from_numpy(np.array(Image.open(image_path).convert('RGB'), copy=True)).permute(2, 0, 1).float() / 255.0
+        image = F.interpolate(image[None], size=(self.input_size, self.input_size), mode='bilinear', align_corners=False)[0]
+        image = (image - mean[:, None, None]) / std[:, None, None]
+        target_np = np.load(target_path)
+        if target_np.ndim == 2:
+            target_np = target_np[..., None]
+        if target_np.shape[-1] != self.num_classes:
+            raise ValueError(f'{target_path} has {target_np.shape[-1]} channels; expected {self.num_classes}')
+        target = torch.from_numpy(np.array(target_np, copy=True)).permute(2, 0, 1).float()
+        target = (target >= self.threshold).float()
+        target = F.interpolate(target[None], size=(self.input_size, self.input_size), mode='nearest')[0]
+        return image, target, str(image_path)
 
 
 def calculate_correlations(matrix1, matrix2):
@@ -146,8 +183,12 @@ def calculate_correlations(matrix1, matrix2):
             flat_matrix2 = flat_matrix2[valid_indices]
 
             if len(flat_matrix1) > 0 and len(flat_matrix2) > 0:
-                pearson_corr, _ = pearsonr(flat_matrix1.detach().cpu().numpy(), flat_matrix2.detach().cpu().numpy())
-                spearman_corr, _ = spearmanr(flat_matrix1.detach().cpu().numpy(), flat_matrix2.detach().cpu().numpy())
+                values1 = flat_matrix1.detach().cpu().numpy()
+                values2 = flat_matrix2.detach().cpu().numpy()
+                pearson_corr = np.corrcoef(values1, values2)[0, 1]
+                ranks1 = pd.Series(values1).rank(method='average').to_numpy()
+                ranks2 = pd.Series(values2).rank(method='average').to_numpy()
+                spearman_corr = np.corrcoef(ranks1, ranks2)[0, 1]
             else:
                 pearson_corr = np.nan
                 spearman_corr = np.nan
@@ -208,7 +249,7 @@ def sample_data_loader(data_loader, config, sample_fraction=0.1, deterministic=F
 
     dataset = data_loader.dataset
     total_size = len(dataset)
-    sample_size = int(total_size * sample_fraction)
+    sample_size = max(1, int(total_size * sample_fraction))
 
     if deterministic:
         sample_indices = [i for i in range(sample_size)]
@@ -220,23 +261,22 @@ def sample_data_loader(data_loader, config, sample_fraction=0.1, deterministic=F
     subset = Subset(dataset, sample_indices)
     
     # Create a new data loader for the subset
-    if what_split == "train":
-        sample_loader = DataLoader(subset, batch_size=data_loader.batch_size, shuffle=True,
-            num_workers=config['num_workers'],
-            prefetch_factor=6,
-            drop_last=True)
-    else:
-        sample_loader = DataLoader(subset, batch_size=data_loader.batch_size, shuffle=False,
-            num_workers=config['num_workers'],
-            prefetch_factor=6,
-            drop_last=False)
+    loader_kwargs = dict(
+        batch_size=data_loader.batch_size,
+        shuffle=what_split == "train",
+        num_workers=config['num_workers'],
+        drop_last=what_split == "train",
+    )
+    if config['num_workers'] > 0:
+        loader_kwargs['prefetch_factor'] = 6
+    sample_loader = DataLoader(subset, **loader_kwargs)
     return sample_loader
 
 def denormalize(tensor, mean, std):
     mean = mean[None, :, None, None]
     std = std[None, :, None, None]
     return tensor * std + mean
-def train(config, train_loader, model, criterion, optimizer):
+def train(config, train_loader, model, criterion, optimizer, device):
     # Initialize average meters to track loss and Pearson correlation metrics
     avg_meters = {'loss': AverageMeter(), 'pearson': AverageMeter()}
     pearson_per_class_meters = [AverageMeter() for _ in range(config['num_classes'])]
@@ -247,14 +287,16 @@ def train(config, train_loader, model, criterion, optimizer):
 
     # Initialize progress bar for training loop
     pbar = tqdm.tqdm(total=len(train_loader))
+    last_batch = None
     for input, target, name in train_loader:
         # Downsample target by factor of 8, then resize to input dimensions to make the target coarse to discount for any pixel level registration error
         downsampled_image = F.interpolate(target, scale_factor=1/8, mode='bilinear', align_corners=False)
         target = F.interpolate(downsampled_image, size=(config["input_h"],config["input_h"]), mode='bilinear', align_corners=False)
-        target = target.cuda()
+        target = target.to(device)
         
         # Forward pass through model
-        output_image = model(input.cuda()).cuda()
+        input = input.to(device)
+        output_image = model(input)
 
         # Calculate loss between predicted and target images
         loss = criterion(output_image, target)
@@ -275,6 +317,7 @@ def train(config, train_loader, model, criterion, optimizer):
         # Update average meters with current batch metrics
         avg_meters['loss'].update(loss.item(), input.size(0))
         avg_meters['pearson'].update(np.nanmean(pearson), input.size(0))
+        last_batch = (input.detach(), target.detach(), output_image.detach())
 
         # Update progress bar with current metrics
         pbar.set_postfix({'loss': avg_meters['loss'].avg, 'pearson': avg_meters['pearson'].avg})
@@ -282,10 +325,13 @@ def train(config, train_loader, model, criterion, optimizer):
     pbar.close()
 
     # Return ordered dictionary with training metrics
-    return OrderedDict([('loss', avg_meters['loss'].avg), ('pearson', avg_meters['pearson'].avg)] +
-                       [(f'class_{i}', m.avg) for i, m in enumerate(pearson_per_class_meters)])
+    result = OrderedDict([('loss', avg_meters['loss'].avg), ('pearson', avg_meters['pearson'].avg)] +
+                         [(f'class_{i}', m.avg) for i, m in enumerate(pearson_per_class_meters)])
+    if last_batch is not None:
+        result.update(zip(('input', 'target', 'output'), last_batch))
+    return result
 
-def validate(config, val_loader, model, criterion):
+def validate(config, val_loader, model, criterion, device):
     # Initialize average meters to track validation loss and Pearson correlation metrics
     avg_meters = {'loss': AverageMeter(), 'pearson': AverageMeter()}
     pearson_per_class_meters = [AverageMeter() for _ in range(config['num_classes'])]
@@ -298,14 +344,16 @@ def validate(config, val_loader, model, criterion):
     with torch.no_grad():
         # Initialize progress bar for validation loop
         pbar = tqdm.tqdm(total=len(val_loader))
+        last_batch = None
         for input, target, name in val_loader:
             # Downsample target by factor of 8, then resize to input dimensions
             downsampled_image = F.interpolate(target, scale_factor=1/8, mode='bilinear', align_corners=False)
             target = F.interpolate(downsampled_image, size=(config["input_h"],config["input_h"]), mode='bilinear', align_corners=False)
-            target = target.cuda()
+            target = target.to(device)
             
             # Forward pass through model
-            output_image = model(input.cuda()).cuda()
+            input = input.to(device)
+            output_image = model(input)
 
             # Calculate validation loss
             loss = criterion(output_image, target)
@@ -320,6 +368,7 @@ def validate(config, val_loader, model, criterion):
             # Update average meters with current batch metrics
             avg_meters['loss'].update(loss.item(), input.size(0))
             avg_meters['pearson'].update(np.nanmean(pearson), input.size(0))
+            last_batch = (input.detach(), target.detach(), output_image.detach())
 
             # Update progress bar with current metrics
             pbar.set_postfix({'loss': avg_meters['loss'].avg, 'pearson': avg_meters['pearson'].avg})
@@ -327,8 +376,11 @@ def validate(config, val_loader, model, criterion):
         pbar.close()
 
     # Return ordered dictionary with validation metrics
-    return OrderedDict([('loss', avg_meters['loss'].avg), ('pearson', avg_meters['pearson'].avg)] +
-                       [(f'class_{i}', m.avg) for i, m in enumerate(pearson_per_class_meters)])
+    result = OrderedDict([('loss', avg_meters['loss'].avg), ('pearson', avg_meters['pearson'].avg)] +
+                         [(f'class_{i}', m.avg) for i, m in enumerate(pearson_per_class_meters)])
+    if last_batch is not None:
+        result.update(zip(('input', 'target', 'output'), last_batch))
+    return result
 
 def main():
     
@@ -360,25 +412,28 @@ def main():
     'Transgelin - TRITC']
 
     config = vars(parse_args())
+    config['gpu_ids'] = config.get('gpu_ids') or []
+    device = torch.device(config.get('device') or ('cuda:0' if torch.cuda.is_available() else 'cpu'))
 
-    os.makedirs(config['output_dir'] + 'models/%s' % config['name'], exist_ok=True)
+    experiment_dir = Path(config['output_dir']) / 'models' / config['name']
+    experiment_dir.mkdir(parents=True, exist_ok=True)
     print('-' * 20)
     for key in config:
         print('%s: %s' % (key, config[key]))
     print('-' * 20)
 
-    with open(config['output_dir'] +'models/%s/config.yml' % config['name'], 'w') as f:
+    with (experiment_dir / 'config.yml').open('w') as f:
         yaml.dump(config, f)
 
     # define loss function (criterion)
     if config['loss'] == 'MSELoss':
-        criterion = nn.MSELoss().cuda()
+        criterion = nn.MSELoss().to(device)
     elif config['loss'] == 'BCEWithLogitsLoss':
-        criterion = nn.BCEWithLogitsLoss().cuda()
+        criterion = nn.BCEWithLogitsLoss().to(device)
     elif config['loss'] == 'BCEDiceLoss':
-        criterion = BCEDiceLoss().cuda()
+        criterion = BCEDiceLoss().to(device)
     else:
-        criterion = losses.__dict__[config['loss']]().cuda()
+        criterion = losses.__dict__[config['loss']]().to(device)
 
     cudnn.benchmark = False
 
@@ -391,7 +446,7 @@ def main():
 
                                             loss_type=config["loss"],
 
-                                            input_channels=config['input_channels'],).cuda()
+                                            input_channels=config['input_channels'],).to(device)
 
 
     if len(config["gpu_ids"]) > 1:
@@ -425,53 +480,65 @@ def main():
 
     import albumentations as geometric
     if config['crop']:
-        train_transform = Compose([
+        train_transform = A.Compose([
             geometric.RandomRotate90(),
-            geometric.Flip(),
-            OneOf([
-                transforms.HueSaturationValue(),
-                transforms.RandomBrightnessContrast(brightness_limit=0, contrast_limit=0.2),
-                transforms.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0),
+            geometric.HorizontalFlip(),
+            A.OneOf([
+                A.HueSaturationValue(),
+                A.RandomBrightnessContrast(brightness_limit=0, contrast_limit=0.2),
+                A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0),
             ], p=1),
             geometric.RandomCrop(config['input_h'], config['input_w']),
-            transforms.Normalize()
+            A.Normalize()
         ],
             is_check_shapes=False)
 
-        val_transform = Compose([
+        val_transform = A.Compose([
             geometric.RandomCrop(config['input_h'], config['input_w']),
-            transforms.Normalize()
+            A.Normalize()
         ],
             is_check_shapes=False)
 
     else:
-        train_transform = Compose([
+        train_transform = A.Compose([
             geometric.RandomRotate90(),
-            geometric.Flip(),
-            OneOf([
-                transforms.HueSaturationValue(),
-                transforms.RandomBrightnessContrast(brightness_limit=0, contrast_limit=0.2),
-                transforms.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0),
+            geometric.HorizontalFlip(),
+            A.OneOf([
+                A.HueSaturationValue(),
+                A.RandomBrightnessContrast(brightness_limit=0, contrast_limit=0.2),
+                A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0),
             ], p=1),
             geometric.Resize(config['input_h'], config['input_w']),
-            transforms.Normalize()
+            A.Normalize()
         ],
             is_check_shapes=False)
 
-        val_transform = Compose([
+        val_transform = A.Compose([
             geometric.Resize(config['input_h'], config['input_w']),
-            transforms.Normalize()
+            A.Normalize()
         ],
             is_check_shapes=False)
         
-    metadata = pd.read_csv(config["metadata"])
-    # Define the tiling directory path from the configuration
-    tiliting_dir = Path(config["tiling_dir"])
+    if config.get('train_csv'):
+        if not config.get('val_csv'):
+            raise ValueError('--val_csv is required with --train_csv')
+        train_dataset = UnifiedBinaryDataset(
+            config['train_csv'], config['tiling_dir'], config['input_h'],
+            config['num_classes'], config['binary_threshold'])
+        val_dataset = UnifiedBinaryDataset(
+            config['val_csv'], config['tiling_dir'], config['input_h'],
+            config['num_classes'], config['binary_threshold'])
+    else:
+        from prov_data import HECOMETDataset_roi, generate_tile_pair_df
 
-    # Generate a DataFrame containing tile pairs based on metadata and the tiling directory
-    tile_pair_df = generate_tile_pair_df(metadata=metadata, tiling_dir=tiliting_dir)
+        metadata = pd.read_csv(config["metadata"])
+        # Define the tiling directory path from the configuration
+        tiliting_dir = Path(config["tiling_dir"])
+
+        # Generate a DataFrame containing tile pairs based on metadata and the tiling directory
+        tile_pair_df = generate_tile_pair_df(metadata=metadata, tiling_dir=tiliting_dir)
     # Filter the DataFrame to remove empty patches and patches from pairs where registration was not successful
-    tile_pair_df_filtered = tile_pair_df[tile_pair_df.apply(
+        tile_pair_df_filtered = tile_pair_df[tile_pair_df.apply(
         lambda x:
             # Check conditions for filtering: These are decided based on manual checks as well as discussions with biologists
             # 1. Black ratio of comet image is less than 0.3
@@ -483,58 +550,58 @@ def main():
              (x["img_comet_variance"] > 200) &
              (x["img_he_black_ratio"] < 0.3) &
              (x["img_he_variance"] > 200)) , axis=1
-    )]
+        )]
 
 
-    dir_names = tile_pair_df_filtered["dir_name"].unique()
-    segment_metric_dict = {}
+        dir_names = tile_pair_df_filtered["dir_name"].unique()
+        segment_metric_dict = {}
 
     # Load the segment metrics into a dictionary
-    for dir_name in dir_names:
+        for dir_name in dir_names:
         # Open the JSON file containing segmentation metrics for the current directory
-        with open(os.path.join(dir_name, "segment_metric.json"), "r") as f:
-            segment_metric_list = json.load(f)
-        segment_metric_dict[dir_name] = segment_metric_list
+            with open(os.path.join(dir_name, "segment_metric.json"), "r") as f:
+                segment_metric_list = json.load(f)
+            segment_metric_dict[dir_name] = segment_metric_list
 
 
-    new_columns = {col: [] for col in next(iter(segment_metric_dict[dir_names[0]].values())).keys()}
+        new_columns = {col: [] for col in next(iter(segment_metric_dict[dir_names[0]].values())).keys()}
 
-    for _, row in tile_pair_df_filtered.iterrows():
-        metrics = segment_metric_dict[row["dir_name"]][row["pair_name"]]
-        for key, value in metrics.items():
-            new_columns[key].append(value)
+        for _, row in tile_pair_df_filtered.iterrows():
+            metrics = segment_metric_dict[row["dir_name"]][row["pair_name"]]
+            for key, value in metrics.items():
+                new_columns[key].append(value)
 
     # Add the new columns to the DataFrame
     # This step integrates the segmentation metrics into the main DataFrame for further analysis
-    for key, values in new_columns.items():
-        tile_pair_df_filtered[key] = values
+        for key, values in new_columns.items():
+            tile_pair_df_filtered[key] = values
 
     # Filter the DataFrame to retain only rows where the "dice" metric is greater than 0.2
     # This step ensures that only high-quality segmentation results between DAPI and stardist outputs are included in the dataset
-    tile_pair_df_filtered_dicefilter = tile_pair_df_filtered[tile_pair_df_filtered["dice"] > 0.2]
+        tile_pair_df_filtered_dicefilter = tile_pair_df_filtered[tile_pair_df_filtered["dice"] > 0.2]
 
-    train_dataset = HECOMETDataset_roi(
-        all_tile_pair=tile_pair_df,
-        tile_pair_df=tile_pair_df_filtered_dicefilter,
-        transform=train_transform,
-        dir_path = config["tiling_dir"],
-        window_size = config["window_size"],
-        split="train",
-        mask_noncell=True,
-        cell_mask_label=True,
-    )    
+        train_dataset = HECOMETDataset_roi(
+            all_tile_pair=tile_pair_df,
+            tile_pair_df=tile_pair_df_filtered_dicefilter,
+            transform=train_transform,
+            dir_path = config["tiling_dir"],
+            window_size = config["window_size"],
+            split="train",
+            mask_noncell=True,
+            cell_mask_label=True,
+        )
 
-    val_dataset = HECOMETDataset_roi(
-        all_tile_pair=tile_pair_df,
-        tile_pair_df=tile_pair_df_filtered_dicefilter,
-        transform=val_transform,
-        dir_path = config["tiling_dir"],
-        window_size = config["window_size"],
-        split="valid",
-        standard = "silver",
-        mask_noncell=True,
-        cell_mask_label=True,
-    )    
+        val_dataset = HECOMETDataset_roi(
+            all_tile_pair=tile_pair_df,
+            tile_pair_df=tile_pair_df_filtered_dicefilter,
+            transform=val_transform,
+            dir_path = config["tiling_dir"],
+            window_size = config["window_size"],
+            split="valid",
+            standard = "silver",
+            mask_noncell=True,
+            cell_mask_label=True,
+        )
 
 
     train_loader = torch.utils.data.DataLoader(
@@ -542,14 +609,12 @@ def main():
         batch_size=config['batch_size'],
         shuffle=True,
         num_workers=config['num_workers'],
-        prefetch_factor=6,
         drop_last=True)
     val_loader = torch.utils.data.DataLoader(
         val_dataset,
         batch_size=config['batch_size'],
         shuffle=False,
         num_workers=config['num_workers'],
-        prefetch_factor=6,
         drop_last=False)
 
 
@@ -574,22 +639,22 @@ def main():
         print('Epoch [%d/%d]' % (epoch, config['epochs']))
 
 
-        train_log = train(config, train_loader, model, criterion, optimizer)
+        train_log = train(config, train_loader, model, criterion, optimizer, device)
         # evaluate on validation set
-        val_log = validate(config, val_loader, model, criterion)
+        val_log = validate(config, val_loader, model, criterion, device)
 
         if epoch%10==0: ##this is for saving intermediate results and visualization
 
-            input = val_log['input'].cuda()
+            input = val_log['input'].to(device)
             target = val_log['target']
             output = val_log['output']
-            input = denormalize(input, mean, std)
+            input = denormalize(input, mean.to(device), std.to(device))
             grid = torchvision.utils.make_grid(input, nrow=1)
-            save_image(grid, config['output_dir'] + "models/" + config['name'] +'/HE_image.png')
+            save_image(grid, experiment_dir / 'HE_image.png')
             grid = torchvision.utils.make_grid(target[:,0,:,:].unsqueeze(1), nrow=1)
-            save_image(grid, config['output_dir'] + "models/" +config['name'] +'/target.png')
+            save_image(grid, experiment_dir / 'target.png')
             grid = torchvision.utils.make_grid(output[:,0,:,:].unsqueeze(1), nrow=1)
-            save_image(grid, config['output_dir'] + "models/" +config['name'] + '/output.png')
+            save_image(grid, experiment_dir / 'output.png')
 
 
         if config['scheduler'] == 'CosineAnnealingLR':
@@ -602,21 +667,21 @@ def main():
         trigger += 1
 
         if val_log['pearson'] > best_pearson: #save best model
-            torch.save(model.module.state_dict(), config['output_dir'] +'models/%s/model.pth' %
-                       config['name'])
+            state = model.module.state_dict() if isinstance(model, nn.DataParallel) else model.state_dict()
+            torch.save(state, experiment_dir / 'model.pth')
             best_pearson = val_log['pearson']
             print("=> saved best model")
 
-            input = val_log['input'].cuda()
+            input = val_log['input'].to(device)
             target = val_log['target']
             output = val_log['output']
-            input = denormalize(input, mean, std)
+            input = denormalize(input, mean.to(device), std.to(device))
             grid = torchvision.utils.make_grid(input, nrow=1)
-            save_image(grid, config['output_dir'] + "models/" + config['name'] +'/HE_image_best.png')
+            save_image(grid, experiment_dir / 'HE_image_best.png')
             grid = torchvision.utils.make_grid(target[:,0,:,:].unsqueeze(1), nrow=1)
-            save_image(grid, config['output_dir'] + "models/" +config['name'] +'/target_best.png')
+            save_image(grid, experiment_dir / 'target_best.png')
             grid = torchvision.utils.make_grid(output[:,0,:,:].unsqueeze(1), nrow=1)
-            save_image(grid, config['output_dir'] + "models/" +config['name'] + '/output_best.png')
+            save_image(grid, experiment_dir / 'output_best.png')
 
         # early stopping
         if config['early_stopping'] >= 0 and trigger >= config['early_stopping']:
@@ -624,6 +689,9 @@ def main():
             break
 
         torch.cuda.empty_cache()
+
+    state = model.module.state_dict() if isinstance(model, nn.DataParallel) else model.state_dict()
+    torch.save(state, experiment_dir / 'latest.pth')
 
 
 if __name__ == "__main__":

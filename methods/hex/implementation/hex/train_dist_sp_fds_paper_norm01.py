@@ -36,6 +36,8 @@ def cleanup() -> None:
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser()
     p.add_argument("--dataroot", type=str, required=True, help="Root containing *_patch_meta.csv and images/targets")
+    p.add_argument("--train_csv", type=str, default=None, help="Explicit unified train CSV")
+    p.add_argument("--val_csv", type=str, default=None, help="Explicit unified validation CSV")
     p.add_argument("--save_dir", type=str, required=True, help="Output directory for runs/ and checkpoints/")
     p.add_argument("--max_iters", type=int, default=100_000)
     p.add_argument("--eval_interval", type=int, default=10_000)
@@ -48,6 +50,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--img_size", type=int, default=384)
     p.add_argument("--musk_img_size", type=int, default=384, help="Must match MUSK config, e.g. 256 or 384")
     p.add_argument("--pretrained_ckpt", type=str, default="", help="Optional checkpoint to load (state_dict)")
+    p.add_argument("--no_musk_pretrained", action="store_true", help="Initialize the HEX backbone randomly (demo/smoke tests only)")
     p.add_argument("--panel_key", type=str, default="default")
     p.add_argument("--norm", choices=["paper", "imagenet"], default="imagenet")
     p.add_argument("--log_interval", type=int, default=100)
@@ -61,6 +64,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--fds_start_update", type=int, default=0)
     p.add_argument("--fds_start_apply", type=int, default=10)
     p.add_argument("--distributed", action="store_true", help="Enable DDP (torchrun). Default is single-GPU.")
+    p.add_argument("--device", type=str, default=None, help="Explicit device for a non-DDP run")
+    p.add_argument("--seed", type=int, default=0)
     return p.parse_args()
 
 
@@ -101,13 +106,13 @@ def main() -> None:
         global_rank = int(os.environ["RANK"])
         world_size = int(os.environ["WORLD_SIZE"])
         device = torch.device(f"cuda:{local_rank}")
-        seed_torch(global_rank)
+        seed_torch(args.seed + global_rank)
     else:
         local_rank = 0
         global_rank = 0
         world_size = 1
-        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        seed_torch(0)
+        device = torch.device(args.device or ("cuda:0" if torch.cuda.is_available() else "cpu"))
+        seed_torch(args.seed)
 
     if args.label_scale <= 0:
         raise ValueError("--label_scale must be > 0")
@@ -161,8 +166,8 @@ def main() -> None:
         ]
     )
 
-    train_dataset = CustomDataset(dataroot=dataroot, phase="train", panel_key=args.panel_key, transform=transform_train)
-    val_dataset = CustomDataset(dataroot=dataroot, phase="valid", panel_key=args.panel_key, transform=transform_val)
+    train_dataset = CustomDataset(dataroot=dataroot, phase="train", panel_key=args.panel_key, transform=transform_train, csv_path=args.train_csv)
+    val_dataset = CustomDataset(dataroot=dataroot, phase="valid", panel_key=args.panel_key, transform=transform_val, csv_path=args.val_csv)
     num_outputs = int(np.asarray(train_dataset[0][1]).shape[0])
 
     if args.distributed:
@@ -209,6 +214,7 @@ def main() -> None:
         num_outputs=num_outputs,
         fds_config=fds_config,
         musk_img_size=args.musk_img_size,
+        pretrained=not args.no_musk_pretrained,
     ).to(device)
 
     if args.pretrained_ckpt:
@@ -228,7 +234,7 @@ def main() -> None:
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_gamma)
 
-    criterion_ad = robust_loss_pytorch.adaptive.AdaptiveLossFunction(num_dims=num_outputs, float_dtype=torch.float32, device=local_rank)
+    criterion_ad = robust_loss_pytorch.adaptive.AdaptiveLossFunction(num_dims=num_outputs, float_dtype=torch.float32, device=device)
     optimizer.add_param_group({"params": criterion_ad.parameters(), "lr": args.lr, "name": "criterion_ad"})
 
     try:
@@ -260,8 +266,9 @@ def main() -> None:
             if global_step >= args.max_iters:
                 break
 
-            inputs = inputs.to(device, non_blocking=True, dtype=torch.float16)
-            labels = labels.to(device, non_blocking=True, dtype=torch.float16)
+            compute_dtype = torch.float16 if device.type == "cuda" else torch.float32
+            inputs = inputs.to(device, non_blocking=True, dtype=compute_dtype)
+            labels = labels.to(device, non_blocking=True, dtype=compute_dtype)
             if args.label_scale != 1.0:
                 labels = labels / float(args.label_scale)
 
@@ -298,8 +305,8 @@ def main() -> None:
                 autocast_eval_ctx = torch.autocast(device_type="cuda", dtype=torch.float16) if device.type == "cuda" else nullcontext()
                 with torch.no_grad(), autocast_eval_ctx:
                     for v_inputs, v_labels, *_ in val_loader:
-                        v_inputs = v_inputs.to(device, non_blocking=True, dtype=torch.float16)
-                        v_labels = v_labels.to(device, non_blocking=True, dtype=torch.float16)
+                        v_inputs = v_inputs.to(device, non_blocking=True, dtype=compute_dtype)
+                        v_labels = v_labels.to(device, non_blocking=True, dtype=compute_dtype)
                         if args.label_scale != 1.0:
                             v_labels = v_labels / float(args.label_scale)
                         v_outputs, _ = model(v_inputs, v_labels, epoch)
@@ -361,4 +368,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -19,6 +19,8 @@ from methods.runner_utils import (
     resolve_known_paths,
     run_dir,
     set_default,
+    set_from,
+    split_csv,
     training_command,
     write_json,
 )
@@ -36,11 +38,15 @@ def _run_original(config: dict, source: Path, destination: Path, task: str, dry_
             raise ValueError("native.train.args must be an object")
         values = dict(values)
         data, train, output = object_at(config, "data"), object_at(config, "train"), object_at(config, "output")
-        set_default(values, "metadata", data.get("metadata"), data.get("csv_path"))
-        set_default(values, "tiling_dir", data.get("root_dir"))
-        set_default(values, "output_dir", output.get("checkpoint_dir"), str(destination))
-        for key in ("batch_size", "epochs", "num_workers", "lr", "weight_decay", "window_size"):
-            set_default(values, key, train.get(key), data.get(key))
+        set_from(values, "metadata", data.get("metadata"), data.get("csv_path"))
+        set_from(values, "tiling_dir", data.get("root_dir"))
+        set_from(values, "train_csv", split_csv(data, "train"))
+        set_from(values, "val_csv", split_csv(data, "valid"))
+        set_from(values, "output_dir", output.get("checkpoint_dir"), str(destination))
+        set_from(values, "name", output.get("run_name"))
+        for key in ("batch_size", "epochs", "num_workers", "lr", "weight_decay", "window_size", "binary_threshold"):
+            set_from(values, key, train.get(key), data.get(key))
+        set_from(values, "device", object_at(config, "runtime").get("device"))
         device = object_at(config, "runtime").get("device")
         index = gpu_index(device)
         if index not in (None, "-1"):

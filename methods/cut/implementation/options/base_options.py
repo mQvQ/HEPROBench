@@ -24,6 +24,9 @@ class BaseOptions():
         """Define the common options that are used in both training and test."""
         # basic parameters
         parser.add_argument('--dataroot', default='placeholder', help='path to images (should have subfolders trainA, trainB, valA, valB, etc)')
+        parser.add_argument('--train_csv', type=str, default=None, help='explicit train CSV with image_path,target_path')
+        parser.add_argument('--val_csv', type=str, default=None, help='explicit validation CSV with image_path,target_path')
+        parser.add_argument('--test_csv', type=str, default=None, help='explicit test CSV with image_path,target_path')
         parser.add_argument('--name', type=str, default='experiment_name', help='name of the experiment. It decides where to store samples and models')
         parser.add_argument('--easy_label', type=str, default='experiment_name', help='Interpretable name')
         parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')

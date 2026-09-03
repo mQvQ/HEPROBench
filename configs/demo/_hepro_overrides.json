@@ -1,0 +1,29 @@
+{
+  "data": {
+    "slide_dataframe_path": null,
+    "train_dataframe_path": "../../demo_data/splits/train.csv",
+    "val_dataframe_path": "../../demo_data/splits/valid.csv",
+    "test_dataframe_path": "../../demo_data/splits/test.csv",
+    "train_csv": "../../demo_data/splits/train.csv",
+    "val_csv": "../../demo_data/splits/valid.csv",
+    "test_csv": "../../demo_data/splits/test.csv",
+    "csv_path": "../../demo_data/splits/{split}.csv",
+    "root_dir": "../../demo_data",
+    "channel_stats_path": "../../demo_data/channel_stats.json",
+    "channel_names_file": "../../demo_data/channel_names.json",
+    "targ_channel_names": ["DAPI", "CD3", "CD20", "PanCK"],
+    "cohort": "synthetic-demo"
+  },
+  "train": {
+    "max_steps": 1,
+    "eval_every_n_steps": null,
+    "log_every_n_steps": 1,
+    "batch_size": 1,
+    "num_workers": 0,
+    "precision": "32-true",
+    "wandb_mode": "disabled",
+    "wandb_project": "heprobench-demo"
+  },
+  "inference": {"split": "test", "batch_size": 1, "num_workers": 0},
+  "runtime": {"device": "cpu"}
+}

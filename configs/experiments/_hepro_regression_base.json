@@ -24,7 +24,7 @@
     "accumulate_grad_batches": 1,
     "gan_mode": "structural",
     "learning_rate_d": 0.0002,
-    "learning_rate_g": 0.00003,
+    "learning_rate_g": 0.0002,
     "precision": "16-mixed",
     "foreground_head": false,
     "use_cell_metrics": false,

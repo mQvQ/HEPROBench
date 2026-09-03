@@ -18,6 +18,8 @@ from methods.runner_utils import (
     resolve_known_paths,
     run_dir,
     set_default,
+    set_from,
+    split_csv,
     training_command,
     write_json,
 )
@@ -55,11 +57,23 @@ def main() -> int:
         values = dict(values)
         _variant_defaults(values, args.variant)
         data, train, output = object_at(config, "data"), object_at(config, "train"), object_at(config, "output")
-        set_default(values, "dataroot", data.get("root_dir"))
-        set_default(values, "checkpoints_dir", output.get("checkpoint_dir"), str(destination / "checkpoints"))
-        set_default(values, "name", output.get("run_name"), args.variant)
-        set_default(values, "batch_size", train.get("batch_size"))
-        set_default(values, "gpu_ids", gpu_index(object_at(config, "runtime").get("device")))
+        set_from(values, "dataroot", data.get("root_dir"))
+        set_from(values, "train_csv", split_csv(data, "train"))
+        set_from(values, "val_csv", split_csv(data, "valid"))
+        set_from(values, "test_csv", split_csv(data, "test"))
+        set_from(values, "checkpoints_dir", output.get("checkpoint_dir"), str(destination / "checkpoints"))
+        set_from(values, "name", output.get("run_name"), args.variant)
+        mappings = {
+            "batch_size": "batch_size",
+            "num_threads": "num_workers",
+            "lr": "learning_rate",
+            "n_iters": "n_iters",
+            "n_iters_decay": "n_iters_decay",
+            "save_latest_freq": "save_latest_freq",
+        }
+        for native_key, shared_key in mappings.items():
+            set_from(values, native_key, train.get(shared_key))
+        set_from(values, "gpu_ids", gpu_index(object_at(config, "runtime").get("device")))
         values = resolve_known_paths(values, source)
         command = training_command(
             IMPLEMENTATION / "train.py",

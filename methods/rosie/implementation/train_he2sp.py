@@ -127,9 +127,10 @@ def masked_mse_loss(pred: torch.Tensor,
     masked_target = torch.masked_select(target, mask)
     return F.mse_loss(masked_pred, masked_target, reduction='mean')
 
-def get_model(num_outputs: Optional[int] = None, 
-             use_context: bool = False, 
-             use_mask: bool = False) -> nn.Module:
+def get_model(num_outputs: Optional[int] = None,
+             use_context: bool = False,
+             use_mask: bool = False,
+             pretrained: bool = True) -> nn.Module:
     """
     Creates and returns the model architecture.
 
@@ -141,7 +142,8 @@ def get_model(num_outputs: Optional[int] = None,
     Returns:
         PyTorch model instance
     """
-    model = models.convnext_small(weights='IMAGENET1K_V1')
+    weights = models.ConvNeXt_Small_Weights.IMAGENET1K_V1 if pretrained else None
+    model = models.convnext_small(weights=weights)
     model.classifier[2] = nn.Linear(model.classifier[2].in_features, num_outputs)
     return model
 
@@ -520,6 +522,10 @@ def parse_args():
                         help='Panel data name')
     parser.add_argument('--panel_dir', type=str, default=None,
                         help='Directory for panel data')
+    parser.add_argument('--train_csv', type=str, default=None,
+                        help='Explicit unified train CSV (image_path,target_path)')
+    parser.add_argument('--val_csv', type=str, default=None,
+                        help='Explicit unified validation CSV')
     
     # Model hyperparameters
     parser.add_argument('--batch_size', type=int, default=DEFAULT_BATCH_SIZE,
@@ -549,12 +555,20 @@ def parse_args():
     parser.add_argument('--preprocess', type=str, default=DEFAULT_PREPROCESS,
                         choices=['auto', 'cpu', 'gpu'],
                         help='Where to run resize/augment/normalize (gpu reduces CPU load)')
+    parser.add_argument('--device', type=str, default=None,
+                        help='Explicit torch device; default is CUDA when available')
+    parser.add_argument('--data_parallel', action='store_true',
+                        help='Use every visible CUDA device through DataParallel')
+    parser.add_argument('--no_pretrained', action='store_true',
+                        help='Do not download/load ImageNet ConvNeXt initialization')
     
     # Wandb parameters
     parser.add_argument('--wandb_project', type=str, default='hande_to_codex',
                         help='Wandb project name')
     parser.add_argument('--wandb_name', type=str, default='model_training',
                         help='Wandb run name')
+    parser.add_argument('--wandb_mode', choices=['online', 'offline', 'disabled'], default='offline',
+                        help='Weights & Biases mode (offline is reproducible without login)')
     
     # Experiment name
     parser.add_argument('--name', type=str, default='experiment',
@@ -572,7 +586,7 @@ def main():
     _seed_everything(args.seed)
     
     # Initialize wandb for experiment tracking
-    wandb.init(project=args.wandb_project, name=args.wandb_name, config=vars(args))
+    wandb.init(project=args.wandb_project, name=args.wandb_name, config=vars(args), mode=args.wandb_mode)
 
     # Set up data transforms
     transform_train = {
@@ -599,14 +613,19 @@ def main():
         ])
     }
 
-    if args.panel is not None:
+    if args.train_csv and args.val_csv:
+        train_df = pd.read_csv(args.train_csv)
+        val_df = pd.read_csv(args.val_csv)
+    elif args.panel is not None:
+        if not args.panel_dir:
+            raise ValueError('--panel_dir is required when --panel is set')
         train_df = pd.read_csv(os.path.join(args.panel_dir, f'train_filter_dapi_std_11_inv_red_nmi_003_patch_meta_{args.panel}.csv'))
         val_df = pd.read_csv(os.path.join(args.panel_dir, f'valid_filter_dapi_std_11_inv_red_nmi_003_patch_meta_{args.panel}.csv'))
     else:
         train_df = pd.read_csv(os.path.join(args.root_dir, 'train_filter_dapi_std_11_inv_red_nmi_003_patch_meta.csv'))
         val_df = pd.read_csv(os.path.join(args.root_dir, 'valid_filter_dapi_std_11_inv_red_nmi_003_patch_meta.csv'))
     
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(args.device or ('cuda' if torch.cuda.is_available() else 'cpu'))
     if device.type == "cuda":
         torch.backends.cudnn.benchmark = True
 
@@ -696,9 +715,9 @@ def main():
     val_loader = DataLoader(val_dataset, **val_loader_kwargs)
 
     # Set up model and training
-    model = get_model(num_outputs=args.output_nc)
+    model = get_model(num_outputs=args.output_nc, pretrained=not args.no_pretrained)
     
-    if torch.cuda.device_count() > 1:
+    if args.data_parallel and device.type == 'cuda' and torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
     
     model = model.to(device)
@@ -822,9 +841,20 @@ def main():
     print(f'\n{"="*60}')
     print(f'Training completed!')
     print(f'Total iterations: {iteration}')
-    print(f'Best model at iteration {best_iteration} with val_r2: {best_val_r2:.6f}')
-    print(f'Best model saved at: {os.path.join(checkpoint_dir, "best_model.pth")}')
+    latest_path = os.path.join(checkpoint_dir, 'latest_model.pth')
+    torch.save({
+        'iteration': iteration,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+    }, latest_path)
+    if current_val_r2 is None:
+        print('Validation was not scheduled during this short run.')
+    else:
+        print(f'Best model at iteration {best_iteration} with val_r2: {best_val_r2:.6f}')
+        print(f'Best model saved at: {os.path.join(checkpoint_dir, "best_model.pth")}')
+    print(f'Latest model saved at: {latest_path}')
     print(f'{"="*60}')
+    wandb.finish()
 
 if __name__ == '__main__':
     main()

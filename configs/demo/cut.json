@@ -1,0 +1,18 @@
+{
+  "extends": "../experiments/cut.json",
+  "data": {
+    "root_dir": "../../demo_data",
+    "train_csv": "../../demo_data/splits/train.csv",
+    "val_csv": "../../demo_data/splits/valid.csv",
+    "test_csv": "../../demo_data/splits/test.csv",
+    "csv_path": "../../demo_data/splits/{split}.csv",
+    "channel_names_file": "../../demo_data/channel_names.json"
+  },
+  "train": {"batch_size": 1, "num_workers": 0, "total_iterations": 1, "save_latest_freq": 1000, "save_per_iteration": 1000},
+  "runtime": {"device": "cpu"},
+  "output": {"run_dir": "../../outputs/demo/cut", "run_name": "cut-demo"},
+  "native": {
+    "train": {"args": {"input_nc": 4, "output_nc": 4, "display_id": -1}},
+    "infer": {"config": {"input_nc": 4, "output_nc": 4, "checkpoints_dir": "../../outputs/demo/cut/checkpoints", "name": "cut-demo"}}
+  }
+}

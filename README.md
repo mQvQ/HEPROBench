@@ -54,9 +54,13 @@ conda activate heprobench-review
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-full.txt
 pip install -e .
 ```
+
+The native pipelines use `libvips`; install the system package first when it is
+not available (for example, `apt install libvips` on Debian/Ubuntu). The
+lighter `requirements.txt` remains available for the original review demo.
 
 </details>
 
@@ -68,13 +72,11 @@ python -m heprobench list-encoders
 
 # Resolve all paths and show the ROSIE native training command.
 python -m heprobench train \
-  --method rosie \
   --config configs/experiments/rosie.json \
   --dry-run
 
 # The same CLI selects one of the 15 frozen foundation-model encoders.
 python -m heprobench train \
-  --method dpt_fm \
   --config configs/foundation_models/uni.json
 ```
 
@@ -85,7 +87,43 @@ overrides do not require editing JSON, for example `--device cuda:1`,
 See [the unified CLI reference](docs/unified_cli.md) for the JSON contract and
 the exact native entrypoint used by every method.
 
-### 3. Run the retained synthetic demo
+### 3. Train the native pipelines on bundled demo data
+
+The repository includes eight 256×256 H&E/target pairs split into four train,
+two validation, and two test samples. Every JSON below is a one-step smoke run;
+`method.name` is read from the JSON, so all methods use the same command shape.
+
+```bash
+python -m heprobench train --config configs/demo/rosie.json
+python -m heprobench train --config configs/demo/cut.json
+python -m heprobench train --config configs/demo/pix2pix.json
+python -m heprobench train --config configs/demo/cyclegan.json
+python -m heprobench train --config configs/demo/histoplexer.json
+python -m heprobench train --config configs/demo/gigatime_original.json
+python -m heprobench train --config configs/demo/gigatime_reg.json
+python -m heprobench train --config configs/demo/miphei_vit.json
+python -m heprobench train --config configs/demo/dpt_fm_h0-mini.json
+```
+
+MIPHEI-ViT and DPT-FM use a randomly initialized H0-mini encoder in the demo
+only, avoiding gated weight downloads while retaining their real decoder,
+loss, optimizer, and training loop. Formal configurations keep the pretrained
+foundation-model protocol and may require `HF_TOKEN` or a local checkpoint.
+
+HEX retains MUSK strictly as an internal architectural dependency, not as a
+standalone benchmark method. After installing that upstream package, its demo
+uses one GPU and skips the pretrained-weight download:
+
+```bash
+pip install "git+https://github.com/lilab-stanford/MUSK.git"
+python -m heprobench train --config configs/demo/hex.json
+```
+
+Use `--dry-run` on any command to inspect the fully resolved native command
+without importing the method stack. Formal experiment defaults and the demo
+overrides are summarized in [the method notes](docs/methods.md).
+
+### 4. Run the retained lightweight demo
 
 ```bash
 bash run_demo.sh

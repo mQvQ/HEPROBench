@@ -18,6 +18,8 @@ from methods.runner_utils import (
     resolve_known_paths,
     run_dir,
     set_default,
+    set_from,
+    split_csv,
     training_command,
     write_json,
 )
@@ -40,11 +42,14 @@ def main() -> int:
             raise ValueError("native.train.args must be an object")
         values = dict(values)
         data, train, output = object_at(config, "data"), object_at(config, "train"), object_at(config, "output")
-        set_default(values, "dataroot", data.get("root_dir"))
-        set_default(values, "save_dir", output.get("checkpoint_dir"), str(destination))
-        set_default(values, "batch_size_per_gpu", train.get("batch_size"))
+        set_from(values, "dataroot", data.get("root_dir"))
+        set_from(values, "train_csv", split_csv(data, "train"))
+        set_from(values, "val_csv", split_csv(data, "valid"))
+        set_from(values, "save_dir", output.get("checkpoint_dir"), str(destination))
+        set_from(values, "batch_size_per_gpu", train.get("batch_size"))
         for key in ("max_iters", "eval_interval", "ckpt_interval", "stage1_iters", "lr", "lr_gamma", "num_workers", "img_size", "musk_img_size", "seed"):
-            set_default(values, key, train.get(key), data.get(key))
+            set_from(values, key, train.get(key), data.get(key))
+        set_from(values, "device", object_at(config, "runtime").get("device"))
         launcher = task_cfg.get("launcher", {})
         if isinstance(launcher, dict) and str(launcher.get("type", "python")).lower() == "torchrun":
             values["distributed"] = True

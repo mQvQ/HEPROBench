@@ -245,7 +245,8 @@ class WandbVisCallback(Callback):
         val_dataset = val_dataloader.dataset
 
         # Sample random indices from the validation dataset
-        idxs_sampled = np.random.choice(np.arange(len(val_dataset)), self.num_samples, replace=False)
+        sample_count = min(self.num_samples, len(val_dataset))
+        idxs_sampled = np.random.choice(np.arange(len(val_dataset)), sample_count, replace=False)
         x, y = [], []
         for idx in idxs_sampled:
             data = val_dataset[idx]

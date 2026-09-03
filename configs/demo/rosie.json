@@ -1,0 +1,16 @@
+{
+  "extends": "../experiments/rosie.json",
+  "data": {
+    "root_dir": "../../demo_data",
+    "train_csv": "../../demo_data/splits/train.csv",
+    "val_csv": "../../demo_data/splits/valid.csv",
+    "test_csv": "../../demo_data/splits/test.csv",
+    "csv_path": "../../demo_data/splits/{split}.csv",
+    "channel_names_file": "../../demo_data/channel_names.json"
+  },
+  "train": {"batch_size": 1, "total_iteration": 1, "num_workers": 0, "samples_per_image": 1},
+  "model": {"checkpoint_path": "../../outputs/demo/rosie/checkpoints/rosie-demo/latest_model.pth"},
+  "runtime": {"device": "cpu"},
+  "output": {"run_dir": "../../outputs/demo/rosie", "run_name": "rosie-demo"},
+  "native": {"train": {"args": {"output_nc": 4, "preprocess": "cpu", "wandb_mode": "disabled", "no_pretrained": true}}}
+}

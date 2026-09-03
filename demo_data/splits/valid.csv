@@ -1,0 +1,3 @@
+slide_name,row,col,split,image_path,target_path
+slide_002,0,0,valid,images/slide_002_patch_0_0.jpg,targets/slide_002_patch_0_0.npy
+slide_002,0,1,valid,images/slide_002_patch_0_1.jpg,targets/slide_002_patch_0_1.npy

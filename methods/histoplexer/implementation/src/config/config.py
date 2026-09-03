@@ -12,6 +12,9 @@ class Config:
         self.src_folder: str = config_dict.get("src_folder", "/path/to/histoplexer/data/tupro/binary_he_rois") # TODO change as needed
         self.tgt_folder: str = config_dict.get("tgt_folder", "/path/to/histoplexer/data/tupro/binary_imc_processed_11x") # TODO change as needed
         self.split: str = config_dict.get("split", "/path/to/histoplexer/meta/tupro/split3_train-test.csv") # TODO change as needed
+        self.train_csv: str = config_dict.get("train_csv", None)
+        self.val_csv: str = config_dict.get("val_csv", None)
+        self.test_csv: str = config_dict.get("test_csv", None)
         self.vgg_path: str = config_dict.get("vgg_path", "/path/to/histoplexer/results/models/vgg19_model.pth") # TODO change as needed
         self.resume_path: str = config_dict.get("resume_path", None)
 
