@@ -6,9 +6,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import numpy as np
+
 from heprobench.dispatch import dispatch_method_task
 from heprobench.experiment import load_experiment_config
 from heprobench.registry import load_encoder_registry, load_method_registry
+from heprobench.profile import profile
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +32,22 @@ class RegistryTests(unittest.TestCase):
                 for row in rows:
                     self.assertTrue((root / row["image_path"]).is_file())
                     self.assertTrue((root / row["target_path"]).is_file())
+                    self.assertTrue((root / row["mask_path"]).is_file())
+                    mask = np.load(root / row["mask_path"])
+                    self.assertEqual(mask.shape, (256, 256))
+                    self.assertTrue(np.issubdtype(mask.dtype, np.integer))
+                    self.assertGreater(int(mask.max()), 0)
+                    self.assertGreaterEqual(int(mask.min()), 0)
+        with (root / "cell_annotations.csv").open(newline="", encoding="utf-8") as handle:
+            cell_rows = list(csv.DictReader(handle))
+        self.assertEqual(len(cell_rows), 128)
+        self.assertEqual({row["split"] for row in cell_rows}, {"train", "valid", "test"})
+        self.assertEqual(
+            {split: sum(row["split"] == split for row in cell_rows) for split in expected_counts},
+            {"train": 64, "valid": 32, "test": 32},
+        )
+        cell_keys = {(row["slide_name"], int(row["global_cell_id"])) for row in cell_rows}
+        self.assertEqual(len(cell_keys), len(cell_rows))
 
     def test_method_registry_has_distinct_gigatime_variants(self) -> None:
         methods = load_method_registry()
@@ -229,6 +248,22 @@ class DryRunTests(unittest.TestCase):
         self.assertEqual(histo["native"]["train"]["launcher"]["nproc_per_node"], 2)
         self.assertEqual(histo["native"]["train"]["config"]["output_nc"], 60)
         self.assertEqual(histo["native"]["infer"]["config"]["output_nc"], 60)
+
+    def test_every_demo_config_has_a_native_efficiency_profile(self) -> None:
+        demo_configs = sorted((ROOT / "configs" / "demo").glob("*.json"))
+        demo_configs = [path for path in demo_configs if not path.name.startswith("_")]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for config_path in demo_configs:
+                with self.subTest(config=config_path.name):
+                    result = profile(
+                        config_path,
+                        Path(temp_dir) / config_path.stem,
+                        device="cpu",
+                        dry_run=True,
+                    )
+                    self.assertEqual(result["schema"], "heprobench_efficiency_v1")
+                    self.assertEqual(len(result["commands"]), 2)
+                    self.assertTrue(all(Path(command.split()[1]).is_file() for command in result["commands"]))
 
 
 if __name__ == "__main__":

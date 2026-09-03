@@ -1,0 +1,42 @@
+{
+  "evaluation": {
+    "split": "test",
+    "image": {
+      "metrics": ["mae", "mse", "rmse", "pearson", "psnr", "ssim", "lpips", "dists"],
+      "perceptual": {
+        "enabled": true,
+        "sample_size": 3000,
+        "seed": 42,
+        "patch_batch": 2,
+        "channel_chunk": 4,
+        "device": "cpu",
+        "lpips_net": "alex"
+      }
+    },
+    "cell": {
+      "enabled": true,
+      "annotations_csv": "../../demo_data/cell_annotations.csv",
+      "classification_markers": ["CD3", "CD20", "PanCK"],
+      "feature_markers": ["DAPI", "CD3", "CD20", "PanCK"],
+      "threshold": 0.5,
+      "seed": 0,
+      "xgb_params": {
+        "n_estimators": 20,
+        "learning_rate": 0.1,
+        "max_depth": 3,
+        "subsample": 1.0,
+        "colsample_bytree": 1.0,
+        "reg_lambda": 1.0
+      }
+    },
+    "efficiency": {
+      "enabled": true,
+      "protocol": "synthetic-demo-smoke-test",
+      "region_size": 512,
+      "patch_size": 256,
+      "warmup": 0,
+      "repeats": 1,
+      "precision": "fp32"
+    }
+  }
+}

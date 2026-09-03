@@ -85,6 +85,44 @@ python -m heprobench evaluate \
   --pred-dir outputs/rosie/predictions/ROSIE/test
 ```
 
+Cell classification requires validation predictions for fitting XGBoost and
+test predictions for scoring. If both are below one parent directory, only the
+parent is needed:
+
+```text
+predictions/
+  valid/<slide>.h5
+  test/<slide>.h5
+```
+
+```bash
+python -m heprobench evaluate \
+  --config configs/demo/rosie.json \
+  --pred-dir outputs/evaluation_demo
+```
+
+Use `--valid-pred-dir` when validation predictions live elsewhere. Demo JSONs
+enable cell evaluation and paper image metrics including LPIPS/DISTS; use
+`--no-cells` or `--no-perceptual` for targeted checks.
+
+Computational efficiency uses the same method JSON and its native architecture:
+
+```bash
+python -m heprobench profile \
+  --config configs/demo/rosie.json \
+  --output-dir outputs/demo/rosie/profile \
+  --device cuda:0
+
+python -m heprobench evaluate \
+  --config configs/demo/rosie.json \
+  --pred-dir outputs/demo/rosie/predictions \
+  --efficiency-json outputs/demo/rosie/profile/efficiency.json
+```
+
+The profile records parameters, forward FLOPs, and inference latency together
+with hardware and input-shape metadata. `--dry-run` prints both native profiler
+commands without importing the method stack.
+
 ## Foundation-model authentication
 
 Gated Hugging Face models read `HF_TOKEN` from the environment. Tokens must not

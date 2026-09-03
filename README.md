@@ -32,7 +32,7 @@ predictions then use one HDF5 contract and one evaluation interface.
 | **Unified interface** | A consistent configuration and command-line workflow across methods. |
 | **Runnable examples** | Synthetic H&E images, multiplex targets, and small checkpoints for local testing. |
 | **Submission validation** | Structured HDF5 output validation before evaluation. |
-| **Metrics** | Per-slide, per-tile, and per-channel MAE, MSE, Pearson, PSNR, and SSIM; cell-level PCC, ACC, and F1. |
+| **Metrics** | Paper image metrics (RMSE, PSNR, SSIM, LPIPS, DISTS), diagnostic MAE/MSE/Pearson, slide-macro aggregation, cell PCC/classification, and computational efficiency. |
 
 ## Quick Start
 
@@ -89,8 +89,9 @@ the exact native entrypoint used by every method.
 
 ### 3. Train the native pipelines on bundled demo data
 
-The repository includes eight 256×256 H&E/target pairs split into four train,
-two validation, and two test samples. Every JSON below is a one-step smoke run;
+The repository includes eight 256×256 H&E/target/mask triplets split into four
+train, two validation, and two test samples, plus slide-global cell IDs and a
+128-cell annotation table. Every JSON below is a one-step smoke run;
 `method.name` is read from the JSON, so all methods use the same command shape.
 
 ```bash
@@ -123,7 +124,23 @@ Use `--dry-run` on any command to inspect the fully resolved native command
 without importing the method stack. Formal experiment defaults and the demo
 overrides are summarized in [the method notes](docs/methods.md).
 
-### 4. Run the retained lightweight demo
+### 4. Run every evaluation path on the bundled data
+
+```bash
+bash run_evaluation_demo.sh
+```
+
+This evaluation-only smoke test generates deterministic valid/test submissions,
+runs native computational profiling, and evaluates image/tile, per-slide,
+cell-level PCC and XGBoost classification metrics. It does not require training
+a model first. Pass another method JSON and device to profile that architecture,
+for example `bash run_evaluation_demo.sh configs/demo/rosie.json cuda:0`.
+
+See [the evaluation reference](docs/evaluation.md) for individual commands,
+the exact metric protocol, and the distinction between synthetic demo labels
+and scientific benchmark results.
+
+### 5. Run the retained lightweight demo
 
 ```bash
 bash run_demo.sh
@@ -166,7 +183,7 @@ python -m heprobench evaluate \
 ```text
 HEPROBench/
 ├── configs/       # Demo and method configuration files
-├── demo_data/     # Synthetic H&E patches and multiplex targets
+├── demo_data/     # Synthetic H&E, targets, cell-ID masks, and cell annotations
 ├── docs/          # Data, method, and submission references
 ├── heprobench/    # CLI, training, inference, validation, and metrics
 ├── methods/       # Runnable method adapters and model registry
@@ -224,10 +241,14 @@ Each method produces one HDF5 file per slide, together with aggregate metrics:
 
 ```text
 outputs/<method>/
-├── slide_001.h5
-├── slide_002.h5
-├── metrics.csv
-└── summary.json
+├── valid/*.h5
+└── test/
+    ├── *.h5
+    ├── metrics_tile_channel.csv
+    ├── metrics_slide_channel.csv
+    ├── metrics_slide.csv
+    ├── cell_metrics/
+    └── summary.json
 ```
 
 Each `.h5` file contains predictions, tile coordinates, channel names, source
@@ -246,14 +267,16 @@ records the schema version, method, encoder, split, and patch size.
   has_gt        bool   [N]               whether each patch has ground truth
 ```
 
-`metrics.csv` stores per-slide, per-tile, and per-channel MAE, MSE, Pearson,
-PSNR, and SSIM. `summary.json` stores their mean values over the demo set.
+The metric CSVs separate tile/marker, slide/marker, and slide-level results.
+`summary.json` records both slide-macro and historical tile-weighted aggregates,
+cell-level results, and an optional native efficiency report.
 
 ## Documentation
 
 - [Data format](docs/data_format.md)
 - [Method notes](docs/methods.md)
 - [Submission format](docs/submission_format.md)
+- [Evaluation protocol](docs/evaluation.md)
 - [Unified CLI and JSON](docs/unified_cli.md)
 - [Review notes](docs/review_notes.md)
 - [Upstream code and licensing](UPSTREAM.md)

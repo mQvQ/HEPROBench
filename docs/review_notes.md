@@ -15,7 +15,10 @@ It includes:
 - tiny checkpoints for the retained legacy demo and one-step checkpoint
   generation through the native demo JSONs;
 - standardized HDF5 output;
-- validation and evaluation CLI commands;
+- validation and evaluation CLI commands, including paper image metrics,
+  slide-macro aggregation, cell-level PCC/classification, and native efficiency;
+- bundled integer cell-ID masks and synthetic valid/test cell annotations for a
+  complete reviewer-side evaluation smoke test;
 - conda and pip environment files.
 
 It intentionally does not include:

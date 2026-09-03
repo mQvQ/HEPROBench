@@ -1,5 +1,5 @@
 {
-  "extends": "../experiments/histoplexer.json",
+  "extends": ["../experiments/histoplexer.json", "_evaluation.json"],
   "data": {
     "src_folder": "../../demo_data",
     "tgt_folder": "../../demo_data",

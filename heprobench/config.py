@@ -27,7 +27,7 @@ def resolve_path(value: str | Path | None, base_dir: Path) -> Path | None:
     return path.resolve()
 
 
-def load_dataset_config(path: str | Path) -> tuple[dict[str, Any], Path]:
+def load_dataset_config(path: str | Path, split_override: str | None = None) -> tuple[dict[str, Any], Path]:
     requested_path = Path(path).expanduser().resolve()
     if requested_path.suffix.lower() == ".json":
         experiment, source_path = load_experiment_config(requested_path)
@@ -36,10 +36,10 @@ def load_dataset_config(path: str | Path) -> tuple[dict[str, Any], Path]:
         evaluation = experiment.get("evaluation", {})
         if not isinstance(data, dict) or not isinstance(inference, dict) or not isinstance(evaluation, dict):
             raise ValueError("Unified config data/inference/evaluation sections must be objects")
-        split = str(evaluation.get("split") or inference.get("split") or data.get("split") or "test")
-        metadata = evaluation.get("csv_path") or inference.get("csv_path") or data.get("csv_path")
-        if not metadata:
-            metadata = data.get(f"{split}_dataframe_path")
+        split = str(split_override or evaluation.get("split") or inference.get("split") or data.get("split") or "test")
+        metadata = None if split_override else evaluation.get("csv_path")
+        metadata = metadata or data.get(f"{split}_csv") or data.get(f"{split}_dataframe_path")
+        metadata = metadata or inference.get("csv_path") or data.get("csv_path")
         if not metadata:
             raise ValueError("Unified evaluation requires data.csv_path or evaluation.csv_path")
         if isinstance(metadata, str):
@@ -47,18 +47,23 @@ def load_dataset_config(path: str | Path) -> tuple[dict[str, Any], Path]:
         columns = data.get("csv_columns", {})
         if not isinstance(columns, dict):
             raise ValueError("data.csv_columns must be an object")
+        config_dir = source_path.parent
+        json_root = resolve_path(data.get("root_dir", "."), config_dir)
+        json_metadata = resolve_path(metadata, config_dir)
+        json_channels = resolve_path(data.get("channel_names_file", "channel_names.json"), config_dir)
         cfg = {
             "dataset": {
                 "name": data.get("cohort", "heprobench"),
-                "root": data.get("root_dir", "."),
-                "metadata_csv": metadata,
-                "channel_names": data.get("channel_names_file", "channel_names.json"),
+                "root": str(json_root),
+                "metadata_csv": str(json_metadata),
+                "channel_names": str(json_channels),
                 "image_column": columns.get("image_path", "image_path"),
                 "target_column": columns.get("target_path", "target_path"),
                 "slide_column": columns.get("slide_name", "slide_name"),
                 "row_column": columns.get("row", "row"),
                 "col_column": columns.get("col", "col"),
                 "split_column": columns.get("split", "split"),
+                "mask_column": columns.get("mask_path", "mask_path"),
                 "split": split,
                 "patch_size": data.get("patch_size", 256),
             }
@@ -79,6 +84,7 @@ def load_dataset_config(path: str | Path) -> tuple[dict[str, Any], Path]:
     dataset.setdefault("row_column", "row")
     dataset.setdefault("col_column", "col")
     dataset.setdefault("split_column", "split")
+    dataset.setdefault("mask_column", "mask_path")
     dataset.setdefault("patch_size", 256)
     return cfg, source_path
 

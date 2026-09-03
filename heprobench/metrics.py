@@ -14,6 +14,10 @@ def mse(pred: np.ndarray, target: np.ndarray) -> float:
     return float(np.mean(diff * diff))
 
 
+def rmse(pred: np.ndarray, target: np.ndarray) -> float:
+    return float(math.sqrt(mse(pred, target)))
+
+
 def pearson(pred: np.ndarray, target: np.ndarray) -> float:
     x = pred.astype(np.float64).reshape(-1)
     y = target.astype(np.float64).reshape(-1)
@@ -47,3 +51,14 @@ def global_ssim(pred: np.ndarray, target: np.ndarray, data_range: float = 255.0)
         return float("nan")
     return float(((2 * ux * uy + c1) * (2 * cov + c2)) / denom)
 
+
+def structural_similarity(pred: np.ndarray, target: np.ndarray, data_range: float = 255.0) -> float:
+    """Paper-compatible local-window SSIM used by the original evaluation."""
+
+    try:
+        from skimage.metrics import structural_similarity as skimage_ssim
+    except ModuleNotFoundError as exc:  # pragma: no cover - dependency error is environment-specific
+        raise RuntimeError(
+            "scikit-image is required for SSIM; install requirements-full.txt"
+        ) from exc
+    return float(skimage_ssim(pred, target, data_range=data_range))

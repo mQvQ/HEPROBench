@@ -16,6 +16,8 @@ class PatchRecord:
     target_path: Path | None
     image_path_rel: str
     target_path_rel: str
+    mask_path: Path | None
+    mask_path_rel: str
     split: str
 
 
@@ -38,6 +40,7 @@ def load_records(dataset_cfg: dict) -> list[PatchRecord]:
     row_col = dataset_cfg.get("row_column", "row")
     col_col = dataset_cfg.get("col_column", "col")
     split_col = dataset_cfg.get("split_column", "split")
+    mask_col = dataset_cfg.get("mask_column", "mask_path")
 
     records: list[PatchRecord] = []
     with metadata_csv.open("r", encoding="utf-8", newline="") as f:
@@ -52,6 +55,7 @@ def load_records(dataset_cfg: dict) -> list[PatchRecord]:
             slide_name = (row.get(slide_col) or "").strip()
             image_rel = (row.get(image_col) or "").strip()
             target_rel = (row.get(target_col) or "").strip()
+            mask_rel = (row.get(mask_col) or "").strip()
             if not slide_name or not image_rel:
                 raise ValueError(f"metadata.csv row {idx} has empty slide_name or image_path")
             try:
@@ -68,6 +72,11 @@ def load_records(dataset_cfg: dict) -> list[PatchRecord]:
                 target_path = Path(target_rel)
                 if not target_path.is_absolute():
                     target_path = root / target_path
+            mask_path = None
+            if mask_rel:
+                mask_path = Path(mask_rel)
+                if not mask_path.is_absolute():
+                    mask_path = root / mask_path
             records.append(
                 PatchRecord(
                     slide_name=slide_name,
@@ -77,6 +86,8 @@ def load_records(dataset_cfg: dict) -> list[PatchRecord]:
                     target_path=target_path.resolve() if target_path else None,
                     image_path_rel=image_rel,
                     target_path_rel=target_rel,
+                    mask_path=mask_path.resolve() if mask_path else None,
+                    mask_path_rel=mask_rel,
                     split=split,
                 )
             )
@@ -92,4 +103,3 @@ def group_by_slide(records: Iterable[PatchRecord]) -> dict[str, list[PatchRecord
     for slide_records in grouped.values():
         slide_records.sort(key=lambda r: (r.row, r.col, r.image_path_rel))
     return grouped
-

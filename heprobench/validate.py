@@ -17,17 +17,24 @@ def _load_target(path: Path) -> np.ndarray:
         return np.asarray(img)
 
 
-def validate_data(config_path: str | Path, check_arrays: bool = True) -> dict:
-    cfg, _ = load_dataset_config(config_path)
+def validate_data(
+    config_path: str | Path,
+    check_arrays: bool = True,
+    split_override: str | None = None,
+) -> dict:
+    cfg, _ = load_dataset_config(config_path, split_override=split_override)
     dataset = cfg["dataset"]
     channel_names = load_channel_names(dataset["channel_names"])
     records = load_records(dataset)
     seen = set()
+    cell_keys: set[tuple[str, int]] = set()
     for rec in records:
         if not rec.image_path.exists():
             raise FileNotFoundError(f"Missing image: {rec.image_path}")
         if rec.target_path is None or not rec.target_path.exists():
             raise FileNotFoundError(f"Missing target: {rec.target_path}")
+        if rec.mask_path is not None and not rec.mask_path.exists():
+            raise FileNotFoundError(f"Missing cell mask: {rec.mask_path}")
         key = (rec.slide_name, rec.row, rec.col)
         if key in seen:
             raise ValueError(f"Duplicated tile coordinate: {key}")
@@ -43,12 +50,30 @@ def validate_data(config_path: str | Path, check_arrays: bool = True) -> dict:
                 raise ValueError(f"Expected target shape [H,W,C]: {rec.target_path}")
             if target.shape[-1] != len(channel_names):
                 raise ValueError(f"Target channel mismatch for {rec.target_path}")
+            if rec.mask_path is not None:
+                mask = np.load(rec.mask_path)
+                if mask.ndim != 2 or mask.shape != target.shape[:2]:
+                    raise ValueError(f"Expected mask shape [H,W] matching target: {rec.mask_path}")
+                if not np.issubdtype(mask.dtype, np.integer) or np.any(mask < 0):
+                    raise ValueError(f"Expected a non-negative integer cell-ID mask: {rec.mask_path}")
+                cell_keys.update((rec.slide_name, int(cell_id)) for cell_id in np.unique(mask) if cell_id > 0)
     grouped = group_by_slide(records)
-    return {"slides": len(grouped), "patches": len(records), "channels": channel_names}
+    return {
+        "split": dataset.get("split"),
+        "slides": len(grouped),
+        "patches": len(records),
+        "masks": sum(record.mask_path is not None for record in records),
+        "unique_slide_cells": len(cell_keys) if check_arrays else None,
+        "channels": channel_names,
+    }
 
 
-def validate_submission(config_path: str | Path, pred_dir: str | Path) -> dict:
-    cfg, _ = load_dataset_config(config_path)
+def validate_submission(
+    config_path: str | Path,
+    pred_dir: str | Path,
+    split_override: str | None = None,
+) -> dict:
+    cfg, _ = load_dataset_config(config_path, split_override=split_override)
     dataset = cfg["dataset"]
     channel_names = load_channel_names(dataset["channel_names"])
     records = load_records(dataset)
@@ -73,4 +98,3 @@ def validate_submission(config_path: str | Path, pred_dir: str | Path) -> dict:
             raise ValueError(f"{h5_path} tile coordinates do not match metadata")
         checked += 1
     return {"slides": checked, "channels": channel_names, "pred_dir": str(pred_dir)}
-

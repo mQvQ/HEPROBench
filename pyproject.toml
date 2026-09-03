@@ -14,6 +14,11 @@ dependencies = [
   "Pillow>=10.0",
   "h5py>=3.9",
   "PyYAML>=6.0",
+  "DISTS-pytorch==0.1",
+  "lpips==0.1.4",
+  "scikit-image>=0.22",
+  "scikit-learn>=1.4",
+  "xgboost>=2.1",
 ]
 
 [project.scripts]
@@ -21,4 +26,3 @@ heprobench = "heprobench.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["heprobench*", "methods*"]
-

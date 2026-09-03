@@ -1,4 +1,4 @@
 {
-  "extends": ["../experiments/gigatime_reg.json", "_hepro_overrides.json"],
+  "extends": ["../experiments/gigatime_reg.json", "_hepro_overrides.json", "_evaluation.json"],
   "output": {"run_dir": "../../outputs/demo/gigatime_reg"}
 }

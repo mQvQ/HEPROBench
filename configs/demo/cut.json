@@ -1,5 +1,5 @@
 {
-  "extends": "../experiments/cut.json",
+  "extends": ["../experiments/cut.json", "_evaluation.json"],
   "data": {
     "root_dir": "../../demo_data",
     "train_csv": "../../demo_data/splits/train.csv",

@@ -1,5 +1,5 @@
 {
-  "extends": ["../experiments/miphei_vit.json", "_hepro_overrides.json"],
+  "extends": ["../experiments/miphei_vit.json", "_hepro_overrides.json", "_evaluation.json"],
   "model": {"encoder": {"name": "h0-mini", "pretrained": false}},
   "runtime": {"device": "cpu"},
   "output": {"run_dir": "../../outputs/demo/miphei_vit"}

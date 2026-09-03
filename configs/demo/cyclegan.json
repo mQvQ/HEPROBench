@@ -1,5 +1,5 @@
 {
-  "extends": "../experiments/cyclegan.json",
+  "extends": ["../experiments/cyclegan.json", "_evaluation.json"],
   "data": {
     "root_dir": "../../demo_data",
     "train_csv": "../../demo_data/splits/train.csv",
