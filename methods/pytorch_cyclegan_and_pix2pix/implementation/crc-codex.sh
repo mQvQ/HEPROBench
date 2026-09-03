@@ -1,0 +1,13 @@
+CUDA_VISIBLE_DEVICES=6 python train.py \
+--dataroot /path/to/preprocess/data/crc-codex-new/crc-codex-reg-patches-new-v2 \
+--name crc-codex-cycle_gan \
+--model cycle_gan \
+--direction AtoB \
+--dataset_mode HE2SP \
+--preprocess corp \
+--crop_size 256 \
+--input_nc 3 \
+--output_nc 58 \
+--batch_size 16 \
+--no_flip \
+--lambda_identity 0.0

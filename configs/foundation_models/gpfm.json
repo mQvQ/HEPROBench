@@ -1,0 +1,1 @@
+{"extends": "dpt_fm_base.json", "model": {"encoder": {"name": "gpfm", "encoder_weights": "../../checkpoints/foundation_models/gpfm.pth"}}, "output": {"run_dir": "../../outputs/dpt_fm/gpfm"}}

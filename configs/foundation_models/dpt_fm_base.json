@@ -1,0 +1,7 @@
+{
+  "extends": "../experiments/_hepro_regression_base.json",
+  "method": {"name": "dpt_fm"},
+  "model": {"model_name": "dpt", "use_lora": false, "encoder": {"name": "uni", "encoder_weights": null, "frozen": true}},
+  "output": {"run_dir": "../../outputs/dpt_fm"},
+  "protocol": {"encoder_trainability": "frozen", "decoder": "DPT", "feature_layers": "last_four", "loss": "channel_standard_deviation_weighted_mse", "input_size": [256, 256], "normalization": "dataset_channel_stats"}
+}

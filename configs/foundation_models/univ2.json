@@ -1,0 +1,1 @@
+{"extends": "dpt_fm_base.json", "model": {"encoder": {"name": "univ2"}}, "output": {"run_dir": "../../outputs/dpt_fm/univ2"}}

@@ -1,0 +1,14 @@
+CUDA_VISIBLE_DEVICES=6 python train.py \
+--dataroot /path/to/preprocess/data/crc-codex-new/crc-codex-reg-patches-new \
+--name crc-codex-cut-repeat \
+--CUT_mode cut \
+--direction AtoB \
+--dataset_mode CRCCODEXREPEAT \
+--preprocess corp \
+--crop_size 256 \
+--input_nc 58 \
+--output_nc 58 \
+--batch_size 8 \
+--n_epochs 15 \
+--n_epochs_decay 0 \
+--no_flip

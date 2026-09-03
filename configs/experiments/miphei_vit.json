@@ -1,0 +1,6 @@
+{
+  "extends": "_hepro_regression_base.json",
+  "method": {"name": "miphei_vit"},
+  "model": {"model_name": "myvitmatte", "use_lora": true, "encoder": {"name": "hoptimus0", "encoder_weights": null, "frozen": false}, "checkpoint_dir": "../../checkpoints/miphei_vit"},
+  "output": {"run_dir": "../../outputs/miphei_vit"}
+}

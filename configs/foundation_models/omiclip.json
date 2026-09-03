@@ -1,0 +1,1 @@
+{"extends": "dpt_fm_base.json", "model": {"encoder": {"name": "omiclip"}}, "output": {"run_dir": "../../outputs/dpt_fm/omiclip"}}

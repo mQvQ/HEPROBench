@@ -1,0 +1,6 @@
+{
+  "extends": "_hepro_regression_base.json",
+  "method": {"name": "gigatime_reg"},
+  "model": {"model_name": "gigatime", "use_lora": false, "encoder": {"encoder_name": "mobilenet_v2", "encoder_weights": null, "frozen": false}, "checkpoint_dir": "../../checkpoints/gigatime_reg"},
+  "output": {"run_dir": "../../outputs/gigatime_reg"}
+}

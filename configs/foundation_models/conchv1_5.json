@@ -1,0 +1,1 @@
+{"extends": "dpt_fm_base.json", "model": {"encoder": {"name": "conchv1_5", "encoder_weights": "../../checkpoints/foundation_models/conchv1_5.pth"}}, "output": {"run_dir": "../../outputs/dpt_fm/conchv1_5"}}

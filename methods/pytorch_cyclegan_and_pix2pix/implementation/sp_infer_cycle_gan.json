@@ -1,0 +1,42 @@
+{
+  "csv_path": "/path/to/preprocess/data/multi-tumor-codex-preprocess/multi-tumor-codex-reg-patches/{split}_filter_dapi_std_11_inv_red_nmi_003_patch_meta.csv",
+  "root_dir": "/path/to/preprocess/data/multi-tumor-codex-preprocess/multi-tumor-codex-reg-patches",
+  "out_root": "/path/to/benchmark/predictions/mt-codex/cycle_gan",
+  "method_name": "cycle_gan",
+  "split": "test",
+
+  "channel_names_file": "/path/to/benchmark/configs/channels/mt-codex.json",
+
+  "checkpoints_dir": "/path/to/benchmark/results/CycleGAN",
+  "name": "multi-tumor-codex-cycle_gan",
+  "epoch": "latest",
+
+  "model": "cycle_gan",
+  "dataset_mode": "HE2SPREPEAT",
+  "direction": "AtoB",
+  "input_nc": 3,
+  "output_nc": 60,
+  "netG": "resnet_9blocks",
+  "norm": "instance",
+
+  "preprocess": "crop",
+  "crop_size": 256,
+  "load_size": 256,
+  "patch_size": 256,
+
+  "batch_size": 16,
+  "num_threads": 4,
+  "gpu_ids": "0",
+  "eval": true,
+
+  "compression": "lzf",
+  "gzip_level": 4,
+  "overwrite": false,
+  "max_slides": null,
+
+  "csv_columns": {
+    "image_path": "image_path",
+    "target_path": "target_path",
+    "slide_name": "slide_name"
+  }
+}

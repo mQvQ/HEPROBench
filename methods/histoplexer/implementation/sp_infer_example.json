@@ -1,0 +1,28 @@
+{
+  "csv_path": "/path/to/preprocess/data/multi-tumor-codex-preprocess/multi-tumor-codex-reg-patches/{split}_filter_dapi_std_11_inv_red_nmi_003_patch_meta.csv",
+  "root_dir": "/path/to/preprocess/data/multi-tumor-codex-preprocess/multi-tumor-codex-reg-patches",
+  "out_root": "/path/to/benchmark/predictions/mt-codex/HistoPlexer",
+  "method_name": "HistoPlexer",
+  "split": "valid",
+
+  "checkpoint_path": "/path/to/benchmark/results/Histoplexer/mt_codex-b16-ddp-wo-high-res-imc01/multi-tumor-codex_ours_ddp_imc01_channels-all_seed-96/checkpoint-step_100000.pt",
+  "channel_names_file": "/path/to/benchmark/configs/channels/mt-codex.json",
+  "output_nc": 60,
+
+  "patch_size": 256,
+  "he_patch_size": 256,
+  "batch_size": 8,
+  "num_workers": 4,
+  "gpu_id": "0",
+
+  "compression": "lzf",
+  "gzip_level": 4,
+  "overwrite": false,
+  "max_slides": null,
+
+  "csv_columns": {
+    "image_path": "image_path",
+    "target_path": "target_path",
+    "slide_name": "slide_name"
+  }
+}

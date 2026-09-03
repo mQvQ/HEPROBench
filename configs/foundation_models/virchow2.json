@@ -1,0 +1,1 @@
+{"extends": "dpt_fm_base.json", "model": {"encoder": {"name": "virchow2"}}, "output": {"run_dir": "../../outputs/dpt_fm/virchow2"}}

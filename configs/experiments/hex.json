@@ -1,0 +1,14 @@
+{
+  "schema_version": "heprobench_experiment_v1",
+  "method": {"name": "hex"},
+  "data": {"root_dir": "../../data/patches", "csv_path": "../../data/patches/{split}_patch_meta.csv", "channel_names_file": "../../data/channel_names.json", "csv_columns": {"image_path": "image_path", "target_path": "target_path", "slide_name": "slide_name"}},
+  "train": {"batch_size": 16, "max_iters": 100000, "eval_interval": 10000, "ckpt_interval": 10000, "stage1_iters": 83333, "lr": 0.00001, "lr_gamma": 0.95, "num_workers": 8, "img_size": 384, "musk_img_size": 384},
+  "model": {"checkpoint_path": "../../checkpoints/hex/checkpoint_step_100000.pth"},
+  "inference": {"split": "test", "batch_size": 64, "num_workers": 0},
+  "runtime": {"device": "cuda:0"},
+  "output": {"run_dir": "../../outputs/hex"},
+  "native": {
+    "train": {"launcher": {"type": "torchrun", "nproc_per_node": 8}, "args": {"panel_key": "default", "norm": "imagenet", "label_scale": 255.0, "fds_bins": 100, "fds_start_update": 0, "fds_start_apply": 10}},
+    "infer": {"config": {"stride": 14, "patch_size": 256, "crop_size": 224, "img_size": 384, "musk_img_size": 384, "norm": "imagenet", "pred_scale": 255.0, "compression": "lzf", "overwrite": false}}
+  }
+}

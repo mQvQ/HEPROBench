@@ -1,0 +1,1 @@
+{"extends": "dpt_fm_base.json", "model": {"encoder": {"name": "pathgen", "encoder_weights": "../../checkpoints/foundation_models/pathgen-clip.pt"}}, "output": {"run_dir": "../../outputs/dpt_fm/pathgen"}}

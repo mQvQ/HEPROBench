@@ -1,0 +1,13 @@
+{
+  "schema_version": "heprobench_experiment_v1",
+  "method": {"name": "pix2pix"},
+  "data": {"root_dir": "../../data/patches", "csv_path": "../../data/patches/{split}_patch_meta.csv", "channel_names_file": "../../data/channel_names.json", "csv_columns": {"image_path": "image_path", "target_path": "target_path", "slide_name": "slide_name"}},
+  "train": {"batch_size": 16},
+  "inference": {"split": "test", "batch_size": 16, "num_workers": 4},
+  "runtime": {"device": "cuda:0"},
+  "output": {"run_dir": "../../outputs/pix2pix", "run_name": "pix2pix-benchmark"},
+  "native": {
+    "train": {"args": {"input_nc": 60, "output_nc": 60, "direction": "AtoB", "preprocess": "crop", "crop_size": 256, "load_size": 256, "n_iters": 100000, "n_iters_decay": 0, "lr": 0.0002, "display_id": -1}},
+    "infer": {"config": {"checkpoints_dir": "../../checkpoints/pix2pix", "name": "pix2pix-benchmark", "epoch": "latest", "input_nc": 60, "output_nc": 60, "direction": "AtoB", "preprocess": "crop", "crop_size": 256, "load_size": 256, "patch_size": 256, "eval": true, "compression": "lzf", "overwrite": false}}
+  }
+}

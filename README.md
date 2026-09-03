@@ -15,14 +15,15 @@
 
 ---
 
-HEPROBench provides a unified interface for evaluating H&E-to-multiplex protein
-prediction methods. This repository contains a compact, runnable package with
-method adapters, HDF5 submission writing, validation, and evaluation.
+HEPROBench provides a unified interface for training and evaluating
+H&E-to-multiplex protein prediction methods. A single CLI dispatches JSON
+experiments to the method-specific training and inference implementations;
+predictions then use one HDF5 contract and one evaluation interface.
 
 > [!NOTE]
-> The included data and tiny checkpoints are synthetic and exist only for the
-> runnable workflow. Training recipes, inference utilities, evaluation scripts,
-> and complete pretrained weights will be updated after publication.
+> The original synthetic review demo remains available for regression testing.
+> The formal JSON experiments use the included method-specific pipelines, but
+> private datasets and full-size checkpoints are not distributed.
 
 ## At a Glance
 
@@ -59,7 +60,32 @@ pip install -e .
 
 </details>
 
-### 2. Run the workflow
+### 2. Inspect or launch the formal pipelines
+
+```bash
+python -m heprobench list-methods
+python -m heprobench list-encoders
+
+# Resolve all paths and show the ROSIE native training command.
+python -m heprobench train \
+  --method rosie \
+  --config configs/experiments/rosie.json \
+  --dry-run
+
+# The same CLI selects one of the 15 frozen foundation-model encoders.
+python -m heprobench train \
+  --method dpt_fm \
+  --config configs/foundation_models/uni.json
+```
+
+Remove `--dry-run` after replacing the example dataset/checkpoint paths. Runtime
+overrides do not require editing JSON, for example `--device cuda:1`,
+`--batch-size 8`, `--split valid`, or `--set train.max_steps=1000`.
+
+See [the unified CLI reference](docs/unified_cli.md) for the JSON contract and
+the exact native entrypoint used by every method.
+
+### 3. Run the retained synthetic demo
 
 ```bash
 bash run_demo.sh
@@ -114,23 +140,27 @@ HEPROBench/
 
 | Method | Description |
 | --- | --- |
-| `miphei_vit` | MIPHEI-ViT with an H-Optimus-0 + ViTMatte-style architecture. |
-| `dpt_fm` | DPT decoder with a configurable pathology foundation-model encoder. |
-| `cut` | CUT adapter. |
-| `hex` | HEX adapter. |
-| `gigatime` | GigaTIME adapter. |
-| `pytorch_cyclegan_and_pix2pix` | pix2pix/CycleGAN adapter. |
-| `rosie` | ROSIE adapter. |
+| `miphei_vit` | MIPHEI-ViT dense regression. |
+| `dpt_fm` | DPT decoder with one of 15 frozen pathology encoders. |
+| `rosie` | ROSIE context-aggregated regression. |
+| `hex` | HEX context-aggregated regression; MUSK is only an internal HEX dependency. |
+| `histoplexer` | Paired consecutive-section generation with Gaussian-pyramid and patch-wise contrastive objectives. |
+| `cut` | Contrastive unpaired translation. |
+| `pix2pix` | Paired conditional GAN. |
+| `cyclegan` | Unpaired cycle-consistent GAN. |
+| `gigatime_original` | Original multi-label binary segmentation formulation. |
+| `gigatime_reg` | Benchmark regression adaptation, named separately from the original. |
 
 ## Supported Pathology Foundation Models
 
 Pathology foundation models are configured through the `dpt_fm` method family
-using the `encoder_name` field:
+using `model.encoder.name`:
 
-```yaml
-method:
-  name: dpt_fm
-  encoder_name: hoptimus0
+```json
+{
+  "method": {"name": "dpt_fm"},
+  "model": {"encoder": {"name": "hoptimus0"}}
+}
 ```
 
 <details>
@@ -144,10 +174,11 @@ provgigapath
 
 </details>
 
-The registry is stored in
-[`methods/pathology-foundation-models/registry.json`](methods/pathology-foundation-models/registry.json).
-For this compact package, these names map to tiny runnable stand-ins rather
-than full external foundation-model checkpoints.
+The formal registry is stored in
+[`methods/pfm/specs.json`](methods/pfm/specs.json), including source, checkpoint
+status, input size, normalization, and feature-layer policy. The 15 inheriting
+JSON experiments are in [`configs/foundation_models`](configs/foundation_models).
+MUSK is intentionally absent from this benchmark registry.
 
 ## Outputs
 
@@ -185,4 +216,6 @@ PSNR, and SSIM. `summary.json` stores their mean values over the demo set.
 - [Data format](docs/data_format.md)
 - [Method notes](docs/methods.md)
 - [Submission format](docs/submission_format.md)
+- [Unified CLI and JSON](docs/unified_cli.md)
 - [Review notes](docs/review_notes.md)
+- [Upstream code and licensing](UPSTREAM.md)

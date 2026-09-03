@@ -1,0 +1,105 @@
+{
+  "schema_version": "heprobench_method_registry_v1",
+  "methods": {
+    "miphei_vit": {
+      "display_name": "MIPHEI-ViT",
+      "paradigm": "dense_regression",
+      "aliases": ["miphei-vit", "vitmatte"],
+      "source": {"kind": "adapted", "upstream": "https://github.com/Sanofi-Public/MIPHEI-ViT"},
+      "tasks": {
+        "train": {"entrypoint": "methods/miphei_vit/runner.py"},
+        "infer": {"entrypoint": "methods/miphei_vit/runner.py"}
+      }
+    },
+    "dpt_fm": {
+      "display_name": "DPT + pathology foundation model",
+      "paradigm": "dense_regression_frozen_encoder",
+      "aliases": ["dpt", "foundation_model", "fm"],
+      "source": {"kind": "benchmark"},
+      "tasks": {
+        "train": {"entrypoint": "methods/dpt_fm/runner.py"},
+        "infer": {"entrypoint": "methods/dpt_fm/runner.py"}
+      }
+    },
+    "rosie": {
+      "display_name": "ROSIE",
+      "paradigm": "context_aggregated_regression",
+      "aliases": [],
+      "source": {"kind": "adapted", "upstream": "https://gitlab.com/enable-medicine-public/rosie", "commit": "0477e5f245a1416d8467377f04ce74df6e5aa192"},
+      "tasks": {
+        "train": {"entrypoint": "methods/rosie/runner.py"},
+        "infer": {"entrypoint": "methods/rosie/runner.py"}
+      }
+    },
+    "hex": {
+      "display_name": "HEX",
+      "paradigm": "context_aggregated_regression",
+      "aliases": [],
+      "source": {"kind": "adapted", "upstream": "https://github.com/lilab-stanford/HEX", "commit": "83a8264883637ec894e08cb1e80b218db2b297ea"},
+      "tasks": {
+        "train": {"entrypoint": "methods/hex/runner.py"},
+        "infer": {"entrypoint": "methods/hex/runner.py"}
+      }
+    },
+    "histoplexer": {
+      "display_name": "HistoPlexer",
+      "paradigm": "paired_generation",
+      "aliases": ["histo"],
+      "source": {"kind": "adapted", "upstream": "https://github.com/sonialagunac/HistoPlexer"},
+      "tasks": {
+        "train": {"entrypoint": "methods/histoplexer/runner.py"},
+        "infer": {"entrypoint": "methods/histoplexer/runner.py"}
+      }
+    },
+    "cut": {
+      "display_name": "CUT",
+      "paradigm": "unpaired_generation",
+      "aliases": [],
+      "source": {"kind": "adapted", "upstream": "https://github.com/taesungp/contrastive-unpaired-translation", "commit": "b3ac297708dfb6f7589d04662277e53c0d579c27"},
+      "tasks": {
+        "train": {"entrypoint": "methods/cut/runner.py"},
+        "infer": {"entrypoint": "methods/cut/runner.py"}
+      }
+    },
+    "pix2pix": {
+      "display_name": "Pix2Pix",
+      "paradigm": "paired_generation",
+      "aliases": [],
+      "source": {"kind": "adapted", "upstream": "https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix", "commit": "c3268edd50ec37a81600c9b981841f48929671b8"},
+      "tasks": {
+        "train": {"entrypoint": "methods/pytorch_cyclegan_and_pix2pix/runner.py", "args": ["--variant", "pix2pix"]},
+        "infer": {"entrypoint": "methods/pytorch_cyclegan_and_pix2pix/runner.py", "args": ["--variant", "pix2pix"]}
+      }
+    },
+    "cyclegan": {
+      "display_name": "CycleGAN",
+      "paradigm": "unpaired_generation",
+      "aliases": ["cycle_gan", "cycle-gan"],
+      "source": {"kind": "adapted", "upstream": "https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix", "commit": "c3268edd50ec37a81600c9b981841f48929671b8"},
+      "tasks": {
+        "train": {"entrypoint": "methods/pytorch_cyclegan_and_pix2pix/runner.py", "args": ["--variant", "cyclegan"]},
+        "infer": {"entrypoint": "methods/pytorch_cyclegan_and_pix2pix/runner.py", "args": ["--variant", "cyclegan"]}
+      }
+    },
+    "gigatime_original": {
+      "display_name": "GigaTIME-Original",
+      "paradigm": "multilabel_binary_segmentation",
+      "aliases": ["gigatime-binary", "gigatime_original"],
+      "source": {"kind": "adapted", "upstream": "https://github.com/prov-gigatime/GigaTIME", "commit": "9240b5bac9114fc7dbc849cad741563e4d1b1a43"},
+      "tasks": {
+        "train": {"entrypoint": "methods/gigatime/runner.py", "args": ["--variant", "original"]},
+        "infer": {"entrypoint": "methods/gigatime/runner.py", "args": ["--variant", "original"]}
+      }
+    },
+    "gigatime_reg": {
+      "display_name": "GigaTIME-Reg",
+      "paradigm": "dense_regression",
+      "aliases": ["gigatime", "gigatime-regression"],
+      "source": {"kind": "benchmark_adaptation"},
+      "tasks": {
+        "train": {"entrypoint": "methods/gigatime/runner.py", "args": ["--variant", "regression"]},
+        "infer": {"entrypoint": "methods/gigatime/runner.py", "args": ["--variant", "regression"]}
+      }
+    }
+  }
+}

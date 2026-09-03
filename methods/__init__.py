@@ -1,19 +1,21 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import torch
-
-from .dpt_fm.model import DPTFM
-from .cut.model import CUTAdapter
-from .gigatime.model import GigaTIMEAdapter
-from .hex.model import HEXAdapter
-from .pytorch_cyclegan_and_pix2pix.model import PyTorchCycleGANAndPix2PixAdapter
-from .rosie.model import ROSIEAdapter
-from .miphei_vit.model import MIPHEIViT
+if TYPE_CHECKING:
+    import torch
 
 
-def build_method(method_cfg: dict[str, Any], out_channels: int) -> torch.nn.Module:
+def build_method(method_cfg: dict[str, Any], out_channels: int) -> "torch.nn.Module":
+    # Keep registry and dry-run commands usable in a lightweight environment.
+    from .cut.model import CUTAdapter
+    from .dpt_fm.model import DPTFM
+    from .gigatime.model import GigaTIMEAdapter
+    from .hex.model import HEXAdapter
+    from .miphei_vit.model import MIPHEIViT
+    from .pytorch_cyclegan_and_pix2pix.model import PyTorchCycleGANAndPix2PixAdapter
+    from .rosie.model import ROSIEAdapter
+
     name = str(method_cfg.get("name", "")).lower()
     encoder_name = str(method_cfg.get("encoder_name", "hoptimus0")).lower()
     width = int(method_cfg.get("width", 32))
@@ -33,4 +35,3 @@ def build_method(method_cfg: dict[str, Any], out_channels: int) -> torch.nn.Modu
     if name == "rosie":
         return ROSIEAdapter(out_channels=out_channels, width=width)
     raise ValueError(f"Unknown method name: {name}")
-

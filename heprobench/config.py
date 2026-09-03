@@ -3,11 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import yaml
+from .experiment import load_experiment_config
 
 
 def load_yaml(path: str | Path) -> tuple[dict[str, Any], Path]:
     """Load YAML and return the data with the absolute source path."""
+    import yaml
+
     source_path = Path(path).expanduser().resolve()
     with source_path.open("r", encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
@@ -26,7 +28,43 @@ def resolve_path(value: str | Path | None, base_dir: Path) -> Path | None:
 
 
 def load_dataset_config(path: str | Path) -> tuple[dict[str, Any], Path]:
-    cfg, source_path = load_yaml(path)
+    requested_path = Path(path).expanduser().resolve()
+    if requested_path.suffix.lower() == ".json":
+        experiment, source_path = load_experiment_config(requested_path)
+        data = experiment.get("data", {})
+        inference = experiment.get("inference", {})
+        evaluation = experiment.get("evaluation", {})
+        if not isinstance(data, dict) or not isinstance(inference, dict) or not isinstance(evaluation, dict):
+            raise ValueError("Unified config data/inference/evaluation sections must be objects")
+        split = str(evaluation.get("split") or inference.get("split") or data.get("split") or "test")
+        metadata = evaluation.get("csv_path") or inference.get("csv_path") or data.get("csv_path")
+        if not metadata:
+            metadata = data.get(f"{split}_dataframe_path")
+        if not metadata:
+            raise ValueError("Unified evaluation requires data.csv_path or evaluation.csv_path")
+        if isinstance(metadata, str):
+            metadata = metadata.format(split=split)
+        columns = data.get("csv_columns", {})
+        if not isinstance(columns, dict):
+            raise ValueError("data.csv_columns must be an object")
+        cfg = {
+            "dataset": {
+                "name": data.get("cohort", "heprobench"),
+                "root": data.get("root_dir", "."),
+                "metadata_csv": metadata,
+                "channel_names": data.get("channel_names_file", "channel_names.json"),
+                "image_column": columns.get("image_path", "image_path"),
+                "target_column": columns.get("target_path", "target_path"),
+                "slide_column": columns.get("slide_name", "slide_name"),
+                "row_column": columns.get("row", "row"),
+                "col_column": columns.get("col", "col"),
+                "split_column": columns.get("split", "split"),
+                "split": split,
+                "patch_size": data.get("patch_size", 256),
+            }
+        }
+    else:
+        cfg, source_path = load_yaml(requested_path)
     dataset = cfg.setdefault("dataset", {})
     if not isinstance(dataset, dict):
         raise ValueError("dataset config must contain a 'dataset' mapping")
@@ -70,4 +108,3 @@ def load_method_config(method: str | Path, dataset_config_path: Path) -> tuple[d
     if checkpoint:
         method_cfg["checkpoint"] = str(resolve_path(checkpoint, source_path.parent))
     return cfg, source_path
-

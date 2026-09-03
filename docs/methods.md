@@ -1,48 +1,52 @@
-# Methods Included In This Review Demo
+# Benchmark Methods
 
-This package includes lightweight runnable method adapters. They are designed
-to exercise the benchmark interface, not to reproduce final paper performance.
+The formal method registry is `methods/registry.json`. Each registered method
+has its own runner and retained native implementation. The shared CLI does not
+replace a method's model, optimizer, losses, or training loop.
 
-Included method configs:
+| Registry name | Paradigm | Native training entrypoint |
+| --- | --- | --- |
+| `rosie` | context-aggregated regression | `methods/rosie/implementation/train_he2sp.py` |
+| `hex` | context-aggregated regression with FDS | `methods/hex/implementation/hex/run_train_dist_sp_fds_paper_norm01.py` |
+| `cut` | unpaired translation | `methods/cut/implementation/train.py` |
+| `pix2pix` | paired conditional GAN | `methods/pytorch_cyclegan_and_pix2pix/implementation/train.py` |
+| `cyclegan` | unpaired cycle-consistent GAN | `methods/pytorch_cyclegan_and_pix2pix/implementation/train.py` |
+| `histoplexer` | paired consecutive-section generation | `methods/histoplexer/implementation/bin/train.py` or `bin.train_ddp` |
+| `gigatime_original` | multi-label binary segmentation | `methods/gigatime/implementation/original/scripts/db_train.py` |
+| `gigatime_reg` | dense regression adaptation | `methods/miphei_vit/implementation/hepro/run.py` |
+| `miphei_vit` | dense regression | `methods/miphei_vit/implementation/hepro/run.py` |
+| `dpt_fm` | frozen encoder + DPT dense regression | `methods/miphei_vit/implementation/hepro/run.py` |
 
-```text
-configs/methods/miphei_vit.yaml
-configs/methods/dpt_fm_hoptimus0.yaml
-configs/methods/dpt_fm_conch.yaml
-configs/methods/cut.yaml
-configs/methods/hex.yaml
-configs/methods/gigatime.yaml
-configs/methods/pytorch_cyclegan_and_pix2pix.yaml
-configs/methods/rosie.yaml
-```
+## HistoPlexer objective
 
-`miphei_vit` is kept as an independent method because it corresponds to the
-H-Optimus-0 + ViTMatte-style architecture used in the paper code.
+HistoPlexer is designed for prediction between non-aligned consecutive tissue
+sections. Its multiscale Gaussian-pyramid loss tolerates local misalignment,
+while its patch-wise contrastive objective preserves corresponding tissue
+content. These objectives are part of the HistoPlexer trainer and are exposed
+in `configs/experiments/histoplexer.json` as `use_gp`, `w_GP`, and `w_ASP`.
+It should therefore be interpreted as a consecutive-section method, not as a
+generic aligned Pix2Pix baseline.
 
-`dpt_fm` selects the pathology foundation model through:
+## GigaTIME naming
 
-```yaml
-method:
-  name: dpt_fm
-  encoder_name: hoptimus0
-```
+`gigatime_original` retains the multi-label binary segmentation formulation and
+uses predicted probabilities as virtual stains. `gigatime_reg` is the dense
+regression adaptation evaluated in the existing benchmark. Results and
+checkpoints must use these distinct names.
 
-Available pathology foundation model names are defined in:
+## Foundation models
 
-```text
-methods/pathology-foundation-models/registry.json
-```
+All 15 pathology encoders use the same comparison protocol: frozen encoder,
+DPT decoder, last four intermediate features (four stages for Swin), 256×256
+benchmark input, dataset-channel-stat normalization, and marker-standard-
+deviation-weighted MSE. See `methods/pfm/specs.json` and
+`configs/foundation_models/`.
 
-The supported names are:
+MUSK is not one of the 15 encoders. References to MUSK inside HEX are preserved
+because it is part of that method's internal feature extraction.
 
-```text
-hoptimus0, h0-mini, ctranspath, conch, conchv1_5, uni, univ2,
-gpfm, phikonv2, pathgen, chief, keep, virchow2, omiclip,
-provgigapath
-```
+## Legacy demo
 
-The CUT, HEX, GigaTIME, pytorch-CycleGAN-and-pix2pix, and ROSIE adapters share
-the same HEPROBench inference/submission interface. Full external method
-repositories and full-size checkpoints are intentionally not bundled in this
-lightweight review package.
-
+The YAML files under `configs/methods/` select tiny adapters used by
+`run_demo.sh`. They are retained for comparison with the first review package
+and are not the formal method-specific implementations above.

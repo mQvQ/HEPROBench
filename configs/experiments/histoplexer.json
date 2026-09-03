@@ -1,0 +1,14 @@
+{
+  "schema_version": "heprobench_experiment_v1",
+  "method": {"name": "histoplexer"},
+  "data": {"src_folder": "../../data/he", "tgt_folder": "../../data/multiplex", "split": "../../data/splits.csv", "vgg_path": "../../checkpoints/vgg19_model.pth", "csv_path": "../../data/patches/{split}_patch_meta.csv", "root_dir": "../../data/patches", "channel_names_file": "../../data/channel_names.json", "csv_columns": {"image_path": "image_path", "target_path": "target_path", "slide_name": "slide_name"}, "patch_size": 256},
+  "train": {"batch_size": 16, "num_workers": 4, "total_steps": 100000, "log_interval": 100, "save_interval": 10000, "seed": 0},
+  "model": {"checkpoint_path": "../../checkpoints/histoplexer/checkpoint-step_100000.pt"},
+  "inference": {"split": "test", "batch_size": 8, "num_workers": 4},
+  "runtime": {"device": "cuda:0"},
+  "output": {"run_dir": "../../outputs/histoplexer"},
+  "native": {
+    "train": {"launcher": {"type": "torchrun", "nproc_per_node": 8}, "config": {"cohort": "benchmark", "method": "ours", "markers": ["DAPI", "CD3", "CD20"], "output_nc": 3, "use_high_res": false, "use_multiscale": true, "use_gp": true, "w_L1": 1.0, "w_GP": 5.0, "w_ASP": 1.0, "w_R1": 1.0, "r1_gamma": 0.0002, "ngf": 32, "depth": 6}},
+    "infer": {"config": {"output_nc": 3, "patch_size": 256, "he_patch_size": 256, "compression": "lzf", "overwrite": false}}
+  }
+}

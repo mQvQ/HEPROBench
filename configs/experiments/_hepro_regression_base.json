@@ -1,0 +1,43 @@
+{
+  "schema_version": "heprobench_experiment_v1",
+  "data": {
+    "slide_dataframe_path": null,
+    "train_dataframe_path": "../../data/patches/train_patch_meta.csv",
+    "val_dataframe_path": "../../data/patches/valid_patch_meta.csv",
+    "test_dataframe_path": "../../data/patches/test_patch_meta.csv",
+    "augmentation_dir": null,
+    "root_dir": "../../data/patches",
+    "channel_stats_path": "../../data/channel_stats.json",
+    "channel_names_file": "../../data/channel_names.json",
+    "targ_channel_names": ["DAPI", "CD3", "CD20"],
+    "cohort": "benchmark",
+    "csv_path": "../../data/patches/{split}_patch_meta.csv"
+  },
+  "model": {"dropout": 0.1, "foreground_head": false, "checkpoint_path": null, "encoder": {"encoder_name": "mobilenet_v2", "encoder_weights": null, "frozen": false}, "use_lora": false},
+  "train": {
+    "epochs": 20,
+    "max_steps": 100000,
+    "eval_every_n_steps": 10000,
+    "log_every_n_steps": 50,
+    "batch_size": 16,
+    "gan_train": false,
+    "accumulate_grad_batches": 1,
+    "gan_mode": "structural",
+    "learning_rate_d": 0.0002,
+    "learning_rate_g": 0.00003,
+    "precision": "16-mixed",
+    "foreground_head": false,
+    "use_cell_metrics": false,
+    "wandb_project": "heprobench",
+    "wandb_note": null,
+    "losses": {"lambda_factor": 50, "use_weighted_mae": false, "adversarial_loss": "binary_crossentropy", "perceptual_loss": false, "cell_loss": {"use_loss": false, "use_mse": false, "use_clustering": false, "mlp_path": "mlp.ckpt"}},
+    "callbacks": {"modelcheckpoint": {"mode": "min", "monitor": "val_gen_loss_sim"}, "early_stopping": {"enabled": true, "monitor": "val_gen_loss_sim", "mode": "min", "patience": 10, "min_delta": 0.0, "verbose": true}},
+    "data_sampler": {"use_sampler": false}
+  },
+  "inference": {"split": "test", "batch_size": 16, "num_workers": 8},
+  "runtime": {"device": "cuda:0"},
+  "native": {
+    "train": {"config": {}},
+    "infer": {"config": {"patch_size": 256, "compression": "lzf", "overwrite": false}}
+  }
+}

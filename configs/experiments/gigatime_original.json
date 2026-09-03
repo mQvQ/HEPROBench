@@ -1,0 +1,14 @@
+{
+  "schema_version": "heprobench_experiment_v1",
+  "method": {"name": "gigatime_original"},
+  "data": {"root_dir": "../../data/gigatime_tiles", "metadata": "../../data/gigatime_metadata.csv", "csv_path": "../../data/patches/{split}_patch_meta.csv", "channel_names_file": "../../data/channel_names.json", "csv_columns": {"image_path": "image_path", "target_path": "target_path", "slide_name": "slide_name"}},
+  "train": {"epochs": 100, "batch_size": 16, "num_workers": 12, "lr": 0.001, "weight_decay": 0.0001, "window_size": 512},
+  "model": {"checkpoint_path": "../../checkpoints/gigatime_original/model.pth"},
+  "inference": {"split": "test", "batch_size": 16, "num_workers": 0},
+  "runtime": {"device": "cuda:0"},
+  "output": {"run_dir": "../../outputs/gigatime_original", "run_name": "gigatime-original"},
+  "native": {
+    "train": {"args": {"arch": "gigatime", "input_channels": 3, "num_classes": 60, "input_w": 556, "input_h": 556, "loss": "BCEDiceLoss", "optimizer": "Adam", "scheduler": "CosineAnnealingLR", "sigmoid": "true"}},
+    "infer": {"config": {"patch_size": 256, "output_nc": 60, "pred_scale": 255.0, "compression": "lzf", "overwrite": false, "model_config": {"architecture": "gigatime", "model_args": {"in_chans": 3, "img_size": 556}, "pretrained_cfg": {"mean": [0.485, 0.456, 0.406], "std": [0.229, 0.224, 0.225]}}}}
+  }
+}

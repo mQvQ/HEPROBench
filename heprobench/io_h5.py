@@ -61,11 +61,17 @@ def write_slide_h5(
 def read_slide_h5(path: str | Path) -> dict[str, Any]:
     path = Path(path)
     with h5py.File(path, "r") as h5:
-        if h5.attrs.get("schema_version") != SCHEMA_VERSION:
-            raise ValueError(f"{path} has unsupported schema_version={h5.attrs.get('schema_version')!r}")
+        schema_version = h5.attrs.get("schema_version")
+        if schema_version is None and "meta" in h5:
+            schema_version = h5["meta"].attrs.get("schema_version")
+        if schema_version not in {SCHEMA_VERSION, "tma_h5_v1"}:
+            raise ValueError(f"{path} has unsupported schema_version={schema_version!r}")
         data = h5["data"]
+        attrs = dict(h5.attrs)
+        if "meta" in h5:
+            attrs.update(dict(h5["meta"].attrs))
         result = {
-            "attrs": dict(h5.attrs),
+            "attrs": attrs,
             "pred": data["pred"][:],
             "rows": data["rows"][:],
             "cols": data["cols"][:],
@@ -76,4 +82,3 @@ def read_slide_h5(path: str | Path) -> dict[str, Any]:
             "has_gt": data["has_gt"][:].astype(bool),
         }
     return result
-

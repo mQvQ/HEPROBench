@@ -1,0 +1,20 @@
+{
+  "schema_version": "heprobench_experiment_v1",
+  "method": {"name": "rosie"},
+  "data": {
+    "root_dir": "../../data/patches",
+    "csv_path": "../../data/patches/{split}_patch_meta.csv",
+    "channel_names_file": "../../data/channel_names.json",
+    "csv_columns": {"image_path": "image_path", "target_path": "target_path", "slide_name": "slide_name"},
+    "patch_size": 256
+  },
+  "train": {"batch_size": 64, "learning_rate": 0.0001, "total_iteration": 100000, "eval_interval": 10000, "save_per_iteration": 10000, "num_workers": 8, "samples_per_image": 128, "seed": 0},
+  "model": {"checkpoint_path": "../../checkpoints/rosie/best_model.pth"},
+  "inference": {"split": "test", "batch_size": 64, "num_workers": 0},
+  "runtime": {"device": "cuda:0"},
+  "output": {"run_dir": "../../outputs/rosie", "run_name": "rosie-benchmark"},
+  "native": {
+    "train": {"args": {"panel": "benchmark", "output_nc": 60, "preprocess": "gpu", "wandb_project": "heprobench"}},
+    "infer": {"config": {"stride": 8, "patch_size": 256, "crop_size": 128, "img_size": 224, "pred_scale": 255.0, "compression": "lzf", "overwrite": false}}
+  }
+}

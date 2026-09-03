@@ -1,0 +1,14 @@
+{
+  "schema_version": "heprobench_experiment_v1",
+  "method": {"name": "cut"},
+  "data": {"root_dir": "../../data/patches", "csv_path": "../../data/patches/{split}_patch_meta.csv", "channel_names_file": "../../data/channel_names.json", "csv_columns": {"image_path": "image_path", "target_path": "target_path", "slide_name": "slide_name"}},
+  "train": {"batch_size": 16},
+  "model": {"checkpoint_path": "../../checkpoints/cut/latest_net_G.pth"},
+  "inference": {"split": "test", "batch_size": 16, "num_workers": 4},
+  "runtime": {"device": "cuda:0"},
+  "output": {"run_dir": "../../outputs/cut", "run_name": "cut-benchmark"},
+  "native": {
+    "train": {"args": {"model": "cut", "dataset_mode": "HE2SPREPEAT", "input_nc": 60, "output_nc": 60, "netG": "resnet_9blocks", "normG": "instance", "preprocess": "crop", "crop_size": 256, "load_size": 256, "total_iterations": 100000, "n_iters": 50000, "n_iters_decay": 50000, "lr": 0.0002, "display_id": -1}},
+    "infer": {"config": {"checkpoints_dir": "../../checkpoints/cut", "name": "cut-benchmark", "epoch": "latest", "model": "cut", "dataset_mode": "HE2SPREPEAT", "direction": "AtoB", "input_nc": 60, "output_nc": 60, "netG": "resnet_9blocks", "normG": "instance", "preprocess": "crop", "crop_size": 256, "load_size": 256, "patch_size": 256, "compression": "lzf", "overwrite": false}}
+  }
+}
