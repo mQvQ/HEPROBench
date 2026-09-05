@@ -1,0 +1,10 @@
+{
+  "extends": ["../../clinical/tcga_survival_he_only.json", "_overrides.json"],
+  "clinical": {
+    "cohort": "synthetic_demo",
+    "prediction_method": "synthetic_he"
+  },
+  "output": {
+    "run_dir": "../../../outputs/clinical_demo/he_only"
+  }
+}

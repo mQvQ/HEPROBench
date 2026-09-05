@@ -1,0 +1,14 @@
+{
+  "extends": ["../../clinical/tcga_stad_classification.json", "_overrides.json"],
+  "clinical": {
+    "cohort": "synthetic_demo",
+    "endpoint": "synthetic_binary_label",
+    "prediction_method": "synthetic_fusion"
+  },
+  "data": {
+    "split_dir": "../../../outputs/clinical_demo/data/classification_splits"
+  },
+  "output": {
+    "run_dir": "../../../outputs/clinical_demo/classification_fusion"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "extends": "_tcga_survival_base.json",
+  "model": {
+    "name": "mcat",
+    "input_modality": "both",
+    "virtual_representation": "channels"
+  },
+  "output": {
+    "run_dir": "../../outputs/clinical/tcga_fusion"
+  }
+}

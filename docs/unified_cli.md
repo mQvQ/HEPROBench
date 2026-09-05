@@ -137,6 +137,35 @@ The profile records parameters, forward FLOPs, and inference latency together
 with hardware and input-shape metadata. `--dry-run` prints both native profiler
 commands without importing the method stack.
 
+## Clinical evaluation
+
+The downstream clinical workflow uses the same configuration pattern and a
+dedicated subcommand:
+
+```bash
+python -m heprobench clinical \
+  --config configs/demo/clinical/survival_fusion.json \
+  --stage make-splits \
+  --stage train \
+  --stage infer \
+  --stage evaluate \
+  --device cpu
+```
+
+`clinical.task` selects survival or classification, `model.name` selects AMIL
+or MCAT, and `model.input_modality` selects H&E, virtual protein, or both. The
+same `--set KEY=VALUE`, `--device`, `--output-dir`, and `--dry-run` controls are
+available. `--stage all` expands to `pipeline.stages` in the JSON.
+
+The runnable matrix is:
+
+```bash
+PYTHON_BIN=python bash run_clinical_demo.sh cpu
+```
+
+See [the clinical evaluation reference](clinical_evaluation.md) for the HDF5,
+feature-bag, outcome-manifest, split, metric, and privacy contracts.
+
 ## Preprocessing reference
 
 CRC-CODEX preprocessing uses a dataset JSON rather than a method JSON:

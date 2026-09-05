@@ -13,8 +13,13 @@ files shipped inside each implementation directory take precedence.
 | GigaTIME Original | `prov-gigatime/GigaTIME`, `9240b5bac9114fc7dbc849cad741563e4d1b1a43` | upstream custom license retained; its source-distribution restriction must be resolved before pushing this snapshot publicly |
 | HistoPlexer | `sonialagunac/HistoPlexer` | no VCS revision or license was present in the local source snapshot; both must be confirmed before public redistribution |
 | HEPRO/MIPHEI-derived pipeline | local HEPRO implementation derived from Sanofi MIPHEI-ViT | academic/non-commercial license file retained |
+| Clinical AMIL/MCAT analysis | privacy-safe refactor of the internal HEPROBench `downstream/survival` snapshot audited 2026-09-05; model design follows AMIL/MCAT/MICA | HEPROBench refactor is covered by the top-level license; no private data or internal source tree is redistributed |
 
 Large pretrained weights are not copied into Git. Foundation-model provider,
 gating, local path, revision, and SHA-256 status are recorded in
 `methods/pfm/specs.json`. Entries with null revision or checksum are explicit
 provenance TODOs, not claims that an unpinned artifact is reproducible.
+
+Hashes of the exact internal clinical files used during the refactor and the
+intentional implementation differences are listed in
+[`docs/clinical_evaluation.md`](docs/clinical_evaluation.md#internal-source-audit).

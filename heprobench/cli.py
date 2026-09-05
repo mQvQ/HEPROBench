@@ -113,6 +113,31 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--dry-run", action="store_true", help="Resolve and print the stage plan without writing files")
 
+    p = sub.add_parser(
+        "clinical",
+        help="Run the JSON-driven downstream clinical survival/classification pipeline",
+    )
+    p.add_argument("--config", required=True)
+    p.add_argument(
+        "--stage",
+        action="append",
+        default=[],
+        help=(
+            "Stage to run; repeat for multiple stages. Choices: all, prepare-outcomes, "
+            "extract-features, align-features, make-splits, train, infer, evaluate"
+        ),
+    )
+    p.add_argument("--device", default=None, help="Runtime device override, e.g. cuda:0")
+    p.add_argument("--output-dir", default=None, help="Clinical run-directory override")
+    p.add_argument(
+        "--set",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Override an arbitrary JSON value using a dotted key; may be repeated",
+    )
+    p.add_argument("--dry-run", action="store_true", help="Resolve and print the clinical stage plan")
+
     return parser
 
 
@@ -251,6 +276,19 @@ def main(argv: list[str] | None = None) -> None:
             run_preprocessing(
                 args.config,
                 stages=args.stage or ["all"],
+                output_dir=args.output_dir,
+                overrides=args.set,
+                dry_run=args.dry_run,
+            )
+        )
+    elif args.command == "clinical":
+        from .clinical_pipeline import run_clinical_pipeline
+
+        _print_json(
+            run_clinical_pipeline(
+                args.config,
+                stages=args.stage or ["all"],
+                device=args.device,
                 output_dir=args.output_dir,
                 overrides=args.set,
                 dry_run=args.dry_run,

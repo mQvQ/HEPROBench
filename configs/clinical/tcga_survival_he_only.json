@@ -1,0 +1,15 @@
+{
+  "extends": "_tcga_survival_base.json",
+  "model": {
+    "name": "amil",
+    "input_modality": "he",
+    "virtual_representation": "aggregated",
+    "he_input_dim": 512
+  },
+  "pipeline": {
+    "stages": ["prepare-outcomes", "make-splits", "train", "infer", "evaluate"]
+  },
+  "output": {
+    "run_dir": "../../outputs/clinical/tcga_he_only"
+  }
+}

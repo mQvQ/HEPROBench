@@ -1,0 +1,50 @@
+{
+  "data": {
+    "manifest_csv": "../../../outputs/clinical_demo/data/manifest.csv",
+    "split_dir": "../../../outputs/clinical_demo/data/splits"
+  },
+  "features": {
+    "root": "../../../outputs/clinical_demo/data/features",
+    "he_aligned_file": "he_aligned.npy",
+    "virtual_channels_file": "virtual_channels.npy",
+    "virtual_aggregated_file": "virtual_aggregated.npy",
+    "patch_ids_file": "patch_ids.json"
+  },
+  "split": {
+    "folds": 2,
+    "seed": 1,
+    "unmatched_policy": "error"
+  },
+  "model": {
+    "he_input_dim": 8,
+    "virtual_input_dim": 6,
+    "n_time_bins": 4,
+    "latent_dim": 16,
+    "attention_dim": 8,
+    "projection_dim": 16,
+    "transformer_heads": 2,
+    "transformer_layers": 1,
+    "transformer_feedforward_dim": 32,
+    "dropout": 0.0
+  },
+  "train": {
+    "epochs": 1,
+    "batch_size": 1,
+    "gradient_accumulation": 2,
+    "learning_rate": 0.001,
+    "weight_decay": 0.00001,
+    "seed": 1
+  },
+  "evaluation": {
+    "bootstrap_iterations": 100,
+    "bootstrap_seed": 3407,
+    "plot_km": true,
+    "cox": true
+  },
+  "runtime": {
+    "device": "cpu"
+  },
+  "pipeline": {
+    "stages": ["make-splits", "train", "infer", "evaluate"]
+  }
+}

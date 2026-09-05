@@ -34,6 +34,7 @@ predictions then use one HDF5 contract and one evaluation interface.
 | **Submission validation** | Structured HDF5 output validation before evaluation. |
 | **Metrics** | Paper image metrics (RMSE, PSNR, SSIM, LPIPS, DISTS), diagnostic MAE/MSE/Pearson, slide-macro aggregation, cell PCC/classification, and computational efficiency. |
 | **Preprocessing/QC** | One JSON-driven pipeline plus dataset-specific adapters for all nine datasets: grouped split, registration/manual QC, FOV-aware tiling, normalization, patch QC, Mesmer, cell extraction, and GMM gating. |
+| **Clinical evaluation** | JSON-driven feature extraction, patient-level folds, AMIL/MCAT training, held-out inference, survival analysis, and classification. |
 
 ## Quick Start
 
@@ -154,7 +155,21 @@ See [the evaluation reference](docs/evaluation.md) for individual commands,
 the exact metric protocol, and the distinction between synthetic demo labels
 and scientific benchmark results.
 
-### 5. Inspect the CRC-CODEX preprocessing reference
+### 5. Run the downstream clinical demo
+
+```bash
+PYTHON_BIN=python bash run_clinical_demo.sh cpu
+```
+
+This generates deidentified synthetic feature bags and runs H&E-only,
+virtual-only, and fusion survival models plus fusion classification through
+patient-level splitting, training, inference, and evaluation. It reports
+slide/patient C-index, patient-bootstrap confidence intervals, KM/log-rank,
+Cox, AUC, accuracy, and macro-F1 as applicable. No real clinical data are
+included or required. See [the clinical evaluation reference](docs/clinical_evaluation.md)
+for formal configurations and the method-comparison workflow.
+
+### 6. Inspect the CRC-CODEX preprocessing reference
 
 The complete preprocessing/QC interface is also configuration-driven:
 
@@ -176,7 +191,7 @@ status, FOV rules, and historical-parameter audit status are summarized in the
 [nine-dataset preprocessing reference](docs/preprocessing_datasets.md). No
 private cohort data or real identifiers are stored in this repository.
 
-### 6. Run the retained lightweight demo
+### 7. Run the retained lightweight demo
 
 ```bash
 bash run_demo.sh
@@ -221,7 +236,7 @@ HEPROBench/
 ├── configs/       # Demo and method configuration files
 ├── demo_data/     # Synthetic H&E, targets, cell-ID masks, and cell annotations
 ├── docs/          # Data, method, and submission references
-├── heprobench/    # CLI, training, inference, validation, and metrics
+├── heprobench/    # CLI, training, inference, clinical analysis, validation, and metrics
 ├── methods/       # Runnable method adapters and model registry
 ├── checkpoints/   # Tiny checkpoints used by the examples
 └── outputs/       # Generated predictions and evaluation results
@@ -307,12 +322,18 @@ The metric CSVs separate tile/marker, slide/marker, and slide-level results.
 `summary.json` records both slide-macro and historical tile-weighted aggregates,
 cell-level results, and an optional native efficiency report.
 
+Downstream clinical runs use a separate output contract containing one best
+checkpoint and history per fold, out-of-fold prediction CSVs, patient-level
+aggregates, and survival/classification summaries. See the
+[clinical evaluation reference](docs/clinical_evaluation.md).
+
 ## Documentation
 
 - [Data format](docs/data_format.md)
 - [Method notes](docs/methods.md)
 - [Submission format](docs/submission_format.md)
 - [Evaluation protocol](docs/evaluation.md)
+- [Clinical evaluation pipeline](docs/clinical_evaluation.md)
 - [Unified CLI and JSON](docs/unified_cli.md)
 - [Native train-to-evaluation demo](docs/end_to_end_demo.md)
 - [Review notes](docs/review_notes.md)

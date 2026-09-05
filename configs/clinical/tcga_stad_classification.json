@@ -1,0 +1,37 @@
+{
+  "extends": "_tcga_survival_base.json",
+  "clinical": {
+    "task": "classification",
+    "endpoint": "STAD_subtype",
+    "class_names": ["negative", "positive"],
+    "columns": {
+      "raw_patient_id": "Patient_ID",
+      "raw_label": "Class",
+      "patient_id": "patient_id",
+      "slide_id": "slide_id",
+      "label": "label"
+    }
+  },
+  "data": {
+    "raw_clinical_csv": "/path/to/private/stad_subtype.csv",
+    "manifest_csv": "/path/to/private/stad_subtype_mapped.csv",
+    "split_dir": "/path/to/private/stad_subtype_splits"
+  },
+  "split": {
+    "folds": 5,
+    "seed": 1,
+    "stratify_column": "label"
+  },
+  "model": {
+    "name": "mcat",
+    "input_modality": "both",
+    "virtual_representation": "channels"
+  },
+  "evaluation": {
+    "plot_km": false,
+    "cox": false
+  },
+  "output": {
+    "run_dir": "../../outputs/clinical/tcga_stad_classification"
+  }
+}

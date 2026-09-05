@@ -26,7 +26,13 @@ It includes:
   VALIS/manual registration QC, legacy normalization, robust-NMI filtering,
   Mesmer, cell extraction, and GMM marker QC;
 - privacy-safe preprocessing JSONs and adapters for the other eight benchmark
-  datasets, with access and parameter-audit status stated explicitly.
+  datasets, with access and parameter-audit status stated explicitly;
+- a privacy-safe refactor of the complete downstream clinical path: HDF5
+  feature extraction, patch alignment, patient-level folds, AMIL/MCAT
+  survival/classification training, held-out inference, patient aggregation,
+  C-index/bootstrap/KM/log-rank/Cox, and classification metrics;
+- four runnable synthetic clinical checks covering H&E-only, virtual-only, and
+  fusion survival plus fusion classification.
 
 It intentionally does not include:
 
@@ -34,6 +40,12 @@ It intentionally does not include:
 - full pretrained model checkpoints;
 - full training outputs or experiment logs;
 - private paths or unreleased data.
+
+Real clinical records, patient/slide mappings, cohort split manifests, and
+historical clinical checkpoints remain outside the repository. Their absence
+does not hide implementation choices: the full executable pipeline, formal
+defaults, input schemas, internal source hashes, and synthetic end-to-end check
+are documented in `docs/clinical_evaluation.md`.
 
 All nine cohorts now have executable preprocessing JSONs. CRC-CODEX is the
 detailed tutorial and planned real-data reviewer demo; the other eight are

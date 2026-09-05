@@ -1,0 +1,15 @@
+{
+  "extends": "_tcga_survival_base.json",
+  "model": {
+    "name": "amil",
+    "input_modality": "virtual",
+    "virtual_representation": "aggregated",
+    "virtual_input_dim": 384
+  },
+  "pipeline": {
+    "stages": ["prepare-outcomes", "extract-features", "make-splits", "train", "infer", "evaluate"]
+  },
+  "output": {
+    "run_dir": "../../outputs/clinical/tcga_virtual"
+  }
+}

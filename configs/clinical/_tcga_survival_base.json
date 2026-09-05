@@ -1,0 +1,108 @@
+{
+  "schema_version": "heprobench_clinical_v1",
+  "clinical": {
+    "task": "survival",
+    "endpoint": "overall_survival",
+    "cohort": "TCGA",
+    "prediction_method": "replace-with-method-name",
+    "columns": {
+      "raw_patient_id": "Patient ID",
+      "raw_event_time": "Overall Survival (Months)",
+      "raw_status": "Overall Survival Status",
+      "patient_id": "patient_id",
+      "slide_id": "slide_id",
+      "event_time": "event_time",
+      "censor": "censor"
+    }
+  },
+  "data": {
+    "raw_clinical_csv": "/path/to/private/clinical.csv",
+    "prediction_h5_dir": "/path/to/heprobench/predictions/test",
+    "manifest_csv": "/path/to/private/clinical_survival_mapped.csv",
+    "split_dir": "/path/to/private/clinical_splits"
+  },
+  "features": {
+    "root": "/path/to/generated/clinical_features",
+    "he_root": "/path/to/conch_slide_features",
+    "he_file_pattern": "{slide_id}_feats.pt",
+    "he_patch_ids_pattern": "{slide_id}_patch_id.json",
+    "he_aligned_file": "he_aligned.npy",
+    "virtual_channels_file": "virtual_channels.npy",
+    "virtual_aggregated_file": "virtual_aggregated.npy",
+    "patch_ids_file": "patch_ids.json",
+    "strict_alignment": true,
+    "extractor": {
+      "name": "dinov2_vits14",
+      "repository": "facebookresearch/dinov2",
+      "revision": "main",
+      "model": "dinov2_vits14",
+      "checkpoint_filename": "dinov2_vits14_pretrain.pth",
+      "weights_sha256": "b938bf1bc15cd2ec0feacfe3a1bb553fe8ea9ca46a7e1d8d00217f29aef60cd9",
+      "input_size": 224,
+      "batch_size": 128,
+      "overwrite": false
+    }
+  },
+  "split": {
+    "folds": 5,
+    "seed": 1,
+    "stratify_column": null,
+    "unmatched_policy": "error"
+  },
+  "model": {
+    "name": "mcat",
+    "input_modality": "both",
+    "virtual_representation": "channels",
+    "he_input_dim": 512,
+    "virtual_input_dim": 384,
+    "n_time_bins": 4,
+    "latent_dim": 256,
+    "attention_dim": 256,
+    "projection_dim": 256,
+    "transformer_heads": 8,
+    "transformer_layers": 2,
+    "transformer_feedforward_dim": 512,
+    "fusion": "concat",
+    "dropout": 0.25
+  },
+  "train": {
+    "epochs": 100,
+    "batch_size": 1,
+    "gradient_accumulation": 32,
+    "optimizer": "adam",
+    "learning_rate": 0.0002,
+    "weight_decay": 0.00001,
+    "loss": "nll_surv",
+    "alpha_survival": 0.0,
+    "seed": 1
+  },
+  "inference": {
+    "split": "val"
+  },
+  "evaluation": {
+    "primary_level": "patient",
+    "bootstrap_iterations": 10000,
+    "bootstrap_seed": 3407,
+    "confidence_level": 0.95,
+    "risk_grouping": "fold_specific_median",
+    "plot_km": true,
+    "cox": true
+  },
+  "runtime": {
+    "device": "cuda:0"
+  },
+  "pipeline": {
+    "stages": [
+      "prepare-outcomes",
+      "extract-features",
+      "align-features",
+      "make-splits",
+      "train",
+      "infer",
+      "evaluate"
+    ]
+  },
+  "output": {
+    "run_dir": "../../outputs/clinical/tcga_fusion"
+  }
+}
