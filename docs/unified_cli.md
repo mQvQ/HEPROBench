@@ -123,6 +123,32 @@ The profile records parameters, forward FLOPs, and inference latency together
 with hardware and input-shape metadata. `--dry-run` prints both native profiler
 commands without importing the method stack.
 
+## Preprocessing reference
+
+CRC-CODEX preprocessing uses a dataset JSON rather than a method JSON:
+
+```bash
+python -m heprobench preprocess \
+  --config configs/preprocessing/crc_codex.json \
+  --dry-run
+```
+
+`--stage` may be repeated to run selected stages. Registration and its manual
+QC should be run first; after every FOV is accepted or rejected, run the image
+and cell stages:
+
+```bash
+python -m heprobench preprocess \
+  --config configs/preprocessing/crc_codex.json \
+  --stage tile --stage normalize --stage patch-qc \
+  --stage segment --stage cell-extract --stage gate
+```
+
+All parameters support `--set KEY=VALUE`, for example
+`--set patch_qc.robust_nmi_min=0.03`. See
+[the CRC-CODEX preprocessing reference](preprocessing_crc_codex.md) for the
+input contract, manual-QC checkpoint, scientific definitions, and outputs.
+
 ## Foundation-model authentication
 
 Gated Hugging Face models read `HF_TOKEN` from the environment. Tokens must not

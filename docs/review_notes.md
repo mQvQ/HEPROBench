@@ -20,6 +20,9 @@ It includes:
 - bundled integer cell-ID masks and synthetic valid/test cell annotations for a
   complete reviewer-side evaluation smoke test;
 - conda and pip environment files.
+- a fully specified CRC-CODEX preprocessing/QC reference pipeline, including
+  VALIS/manual registration QC, legacy normalization, robust-NMI filtering,
+  Mesmer, cell extraction, and GMM marker QC.
 
 It intentionally does not include:
 
@@ -27,6 +30,11 @@ It intentionally does not include:
 - full pretrained model checkpoints;
 - full training outputs or experiment logs;
 - private paths or unreleased data.
+
+CRC-CODEX is currently the only cohort with an end-to-end preprocessing JSON.
+The other eight cohort adapters and the de-identified exact study split
+manifest remain required before claiming full benchmark-wide preprocessing
+reproducibility.
 
 Remote foundation-model revisions/checksums and redistribution permission for
 source trees without an explicit upstream license remain release-blocking

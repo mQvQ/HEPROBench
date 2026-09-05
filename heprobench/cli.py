@@ -92,6 +92,27 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--device", default=None)
     p.add_argument("--dry-run", action="store_true")
 
+    p = sub.add_parser("preprocess", help="Run the reproducible dataset preprocessing/QC pipeline")
+    p.add_argument("--config", required=True)
+    p.add_argument(
+        "--stage",
+        action="append",
+        default=[],
+        help=(
+            "Stage to run; repeat for multiple stages. Choices: all, split, register, "
+            "registration-qc, tile, normalize, patch-qc, segment, cell-extract, gate"
+        ),
+    )
+    p.add_argument("--output-dir", default=None, help="Preprocessing output-root override")
+    p.add_argument(
+        "--set",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="Override an arbitrary JSON value using a dotted key; may be repeated",
+    )
+    p.add_argument("--dry-run", action="store_true", help="Resolve and print the stage plan without writing files")
+
     return parser
 
 
@@ -223,5 +244,17 @@ def main(argv: list[str] | None = None) -> None:
         from .profile import profile
 
         _print_json(profile(args.config, args.output_dir, device=args.device, dry_run=args.dry_run))
+    elif args.command == "preprocess":
+        from .preprocess import run_preprocessing
+
+        _print_json(
+            run_preprocessing(
+                args.config,
+                stages=args.stage or ["all"],
+                output_dir=args.output_dir,
+                overrides=args.set,
+                dry_run=args.dry_run,
+            )
+        )
     else:
         parser.error(f"Unknown command: {args.command}")

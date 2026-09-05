@@ -26,3 +26,6 @@ heprobench = "heprobench.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["heprobench*", "methods*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

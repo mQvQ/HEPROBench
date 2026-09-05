@@ -1,0 +1,106 @@
+{
+  "schema_version": "heprobench_preprocessing_v1",
+  "dataset": {
+    "name": "CRC-CODEX",
+    "scenario": "co-stained",
+    "technology": "CODEX",
+    "specimen_type": "TMA",
+    "root_dir": "../../data/crc_codex",
+    "slide_manifest": "manifests/slides.csv",
+    "channel_names_file": "crc_codex_channels.json",
+    "columns": {
+      "slide_id": "slide_id",
+      "patient_id": "patient_id",
+      "he_path": "he_path",
+      "target_path": "target_path"
+    }
+  },
+  "split": {
+    "group_column": "patient_id",
+    "split_column": "split",
+    "reuse_existing": true,
+    "ratios": {
+      "train": 0.7,
+      "valid": 0.1,
+      "test": 0.2
+    },
+    "seed": 42
+  },
+  "registration": {
+    "reference_modality": "CODEX",
+    "moving_modality": "H&E",
+    "align_to_reference": true,
+    "non_rigid": true,
+    "crop": "reference",
+    "level": 0,
+    "quality": 85,
+    "skip_existing": true
+  },
+  "registration_qc": {
+    "raw_nuclear_channel": "DRAQ5",
+    "raw_nuclear_channel_index": 91,
+    "he_reference": "inverse_red",
+    "thumbnail_max_side": 1024,
+    "require_manual_acceptance": true
+  },
+  "tiling": {
+    "fov_definition": "one TMA core",
+    "patch_size": 256,
+    "stride": 256,
+    "raw_channel_count": 92,
+    "target_channel_axis": "auto",
+    "retained_channel_indices": [
+      4, 5, 6, 7, 9, 10, 11, 13, 14, 15, 17, 18, 19, 21, 22, 23,
+      25, 26, 27, 29, 30, 31, 33, 34, 35, 37, 38, 39, 41, 42, 43, 45,
+      46, 47, 49, 50, 51, 53, 54, 55, 57, 58, 59, 61, 62, 63, 65, 66,
+      67, 70, 71, 74, 75, 78, 79, 82, 83, 91
+    ]
+  },
+  "normalization": {
+    "fit_split": "train",
+    "percentile": 99.9,
+    "samples_per_patch": 10000,
+    "transform": "legacy_log1p",
+    "divide_by_log2": false,
+    "output_dtype": "uint8"
+  },
+  "patch_qc": {
+    "nuclear_channel": "DRAQ5",
+    "he_reference": "inverse_red",
+    "he_inverse_channel": 0,
+    "nuclear_std_min": 11.0,
+    "robust_nmi_min": 0.03,
+    "gaussian_sigma": 1.5,
+    "robust_nmi_bins": 16,
+    "diagnostic_nmi_bins": 64,
+    "min_foreground_pixels": 100
+  },
+  "segmentation": {
+    "model": "Mesmer",
+    "nuclear_channel": "DRAQ5",
+    "boundary_channels": ["Na-K-ATPase"],
+    "boundary_reduction": "maximum",
+    "image_mpp": 0.69,
+    "maxima_algorithm": "peak_local_max"
+  },
+  "cell_extraction": {
+    "expression_aggregation": "mean",
+    "evaluation_patch_assignment": "centroid",
+    "background_id": 0
+  },
+  "gating": {
+    "model": "GaussianMixture",
+    "n_components": 2,
+    "positive_only_fit": true,
+    "posterior_threshold": 0.5,
+    "max_cells_per_marker": 300000,
+    "min_cells_to_fit": 2000,
+    "seed": 42,
+    "separation_min": 1.5,
+    "positive_rate_min": 0.01,
+    "positive_rate_max": 0.99
+  },
+  "output": {
+    "root_dir": "../../outputs/preprocessing/crc_codex"
+  }
+}

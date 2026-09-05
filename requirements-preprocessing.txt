@@ -1,0 +1,11 @@
+-r requirements.txt
+pandas>=2.1
+tifffile>=2024.2
+tdigest>=0.5.2
+opencv-python-headless>=4.9
+valis-wsi>=1.1,<2
+
+# Mesmer is needed only for the `segment` stage. DeepCell/TensorFlow support is
+# Python/CUDA specific, so install a compatible DeepCell 0.12 environment when
+# it cannot coexist with the VALIS environment.
+deepcell>=0.12,<1
