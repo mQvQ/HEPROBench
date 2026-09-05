@@ -1,0 +1,2 @@
+sample_id,slide_id,fov_id,group_id,he_path,target_path,origin_y_px,origin_x_px,split
+sample_001,slide_001,region_001,group_001,registered/he/sample_001.tif,registered/multiplex/sample_001.npy,0,0,train

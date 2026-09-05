@@ -1,0 +1,50 @@
+{
+  "extends": "_dataset_base.json",
+  "dataset": {
+    "name": "HEMIT",
+    "scenario": "co-stained",
+    "technology": "mIHC",
+    "specimen_type": "Regions",
+    "channel_count": 3,
+    "root_dir": "../../data/hemit",
+    "channel_names_file": "hemit_channels.json",
+    "access": {
+      "status": "external_not_redistributed",
+      "data_in_repository": false,
+      "manifest_policy": "deidentified_ids_only"
+    }
+  },
+  "reproduction": {
+    "status": "verified",
+    "evidence": "Physical channel order, QC, region stitching, and Mesmer inputs were cross-checked against retained scripts."
+  },
+  "registration": {
+    "method": "pre_registered"
+  },
+  "registration_qc": {
+    "raw_nuclear_channel": "DAPI",
+    "raw_nuclear_channel_index": 2
+  },
+  "tiling": {
+    "fov_definition": "one supplied registered region",
+    "fov_size_px": null,
+    "raw_channel_count": 3,
+    "raw_channel_order": ["PanCK", "CD3", "DAPI"],
+    "retained_channel_indices": [2, 0, 1]
+  },
+  "normalization": {
+    "transform": "identity",
+    "reason": "The supplied HEMIT target arrays are already in the historical benchmark range."
+  },
+  "patch_qc": {
+    "nuclear_channel": "DAPI"
+  },
+  "segmentation": {
+    "nuclear_channel": "DAPI",
+    "boundary_channels": ["PanCK", "CD3"],
+    "image_mpp": null
+  },
+  "output": {
+    "root_dir": "../../outputs/preprocessing/hemit"
+  }
+}

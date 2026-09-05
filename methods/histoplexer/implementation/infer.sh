@@ -1,6 +1,6 @@
-python -m bin.inference --checkpoint_path=/path/to/HistoPlexer/results/smu-p1-wo-high-res/smu_ours_channels-all_seed-96/checkpoint-step_500000.pt \
+python -m bin.inference --checkpoint_path="${HISTOPLEXER_CHECKPOINT_PATH:?Set HISTOPLEXER_CHECKPOINT_PATH to an authorized checkpoint}" \
                         --get_predictions \
-                        --src_folder=/data1/tma/mIHC/Series-14-After-Registration-High-Quality-Region-Cropped-Patch \
-                        --tgt_folder=/data1/tma/mIHC/Series-14-After-Registration-High-Quality-Region-Cropped-Patch
+                        --src_folder="${HISTOPLEXER_HE_ROOT:?Set HISTOPLEXER_HE_ROOT to an authorized H&E directory}" \
+                        --tgt_folder="${HISTOPLEXER_TARGET_ROOT:?Set HISTOPLEXER_TARGET_ROOT to an authorized multiplex directory}"
 # train
-python -m bin.train --config_path=/path/to/HistoPlexer/src/config/smu_config_panel-2.json
+python -m bin.train --config_path="${HISTOPLEXER_CONFIG_PATH:?Set HISTOPLEXER_CONFIG_PATH to a local training config}"

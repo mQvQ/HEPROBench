@@ -1,2 +1,2 @@
 slide_id,patient_id,he_path,target_path,split
-CRC_TMA_A_reg001_X01_Y01,patient_001,raw/he/CRC_TMA_A_reg001_X01_Y01_he.tif,raw/codex/CRC_TMA_A_reg001_X01_Y01.tif,train
+sample_001,group_001,raw/he/sample_001.tif,raw/multiplex/sample_001.tif,train

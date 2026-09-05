@@ -327,6 +327,15 @@ def main():
     # ... (参数部分保持不变) ...
     parser.add_argument('--input_dir', type=str, required=True)
     parser.add_argument('--split', type=str, required=True)
+    parser.add_argument(
+        '--metadata_csv',
+        type=str,
+        default=None,
+        help=(
+            'CSV containing an image_path column. Required for directory input '
+            'unless <input_dir>/<split>_samples.csv exists.'
+        ),
+    )
     parser.add_argument('--output_dir', type=str, required=True)
     parser.add_argument('--model_path', type=str, required=True)
     parser.add_argument('--stride_size', type=int, default=8)
@@ -347,11 +356,15 @@ def main():
         tasks.append((os.path.basename(args.input_dir), output_name))
         args.input_dir = os.path.dirname(args.input_dir)
     else:
-        df_path = os.path.join(f'/data2/tma/smu-crc-mihc/{args.split}_patches_filter_dapi_std_th_11_panel-2_dapi_stats.csv')
+        df_path = args.metadata_csv or os.path.join(args.input_dir, f'{args.split}_samples.csv')
         if not os.path.exists(df_path):
-            print(f"Error: {df_path} not found.")
-            return
+            parser.error(
+                f'Metadata CSV not found: {df_path}. Pass --metadata_csv with an '
+                'authorized local manifest containing an image_path column.'
+            )
         df = pd.read_csv(df_path)
+        if 'image_path' not in df.columns:
+            parser.error(f'Metadata CSV must contain an image_path column: {df_path}')
         for img_name in df['image_path']:
             if img_name.endswith('.ome.zarr'):
                 out = os.path.dirname(img_name)
@@ -409,4 +422,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

@@ -1,0 +1,46 @@
+{
+  "extends": "_dataset_base.json",
+  "dataset": {
+    "name": "AML-CODEX",
+    "scenario": "co-stained",
+    "technology": "CODEX",
+    "specimen_type": "WSI",
+    "channel_count": 54,
+    "root_dir": "../../data/aml_codex",
+    "channel_names_file": "aml_codex_channels.json",
+    "access": {
+      "status": "external_not_redistributed",
+      "data_in_repository": false,
+      "manifest_policy": "deidentified_ids_only"
+    }
+  },
+  "reproduction": {
+    "status": "verified",
+    "evidence": "Parameters cross-checked against the retained experiment preprocessing scripts."
+  },
+  "registration_qc": {
+    "raw_nuclear_channel": "DAPI",
+    "raw_nuclear_channel_index": 0
+  },
+  "tiling": {
+    "fov_definition": "non-overlapping 2048x2048 WSI region",
+    "fov_size_px": 2048,
+    "raw_channel_count": 54,
+    "retained_channel_indices": [
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+      18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
+      36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53
+    ]
+  },
+  "patch_qc": {
+    "nuclear_channel": "DAPI"
+  },
+  "segmentation": {
+    "nuclear_channel": "DAPI",
+    "boundary_channels": ["NAKATPASE"],
+    "image_mpp": 0.69
+  },
+  "output": {
+    "root_dir": "../../outputs/preprocessing/aml_codex"
+  }
+}

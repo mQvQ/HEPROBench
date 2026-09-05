@@ -1,0 +1,45 @@
+{
+  "extends": "_dataset_base.json",
+  "dataset": {
+    "name": "SPATCH-CODEX",
+    "scenario": "adjacent",
+    "technology": "CODEX",
+    "specimen_type": "WSI",
+    "channel_count": 17,
+    "root_dir": "../../data/spatch_codex",
+    "channel_names_file": "spatch_codex_channels.json",
+    "access": {
+      "status": "external_not_redistributed",
+      "data_in_repository": false,
+      "manifest_policy": "deidentified_ids_only"
+    }
+  },
+  "reproduction": {
+    "status": "pending_source_audit",
+    "evidence": "Panel, scenario, FOV protocol, and benchmark-wide QC are known; exact source preprocessing settings must be audited before paper-result reproduction is claimed."
+  },
+  "registration_qc": {
+    "raw_nuclear_channel": "DAPI",
+    "raw_nuclear_channel_index": 0
+  },
+  "tiling": {
+    "fov_definition": "non-overlapping 2048x2048 WSI region",
+    "fov_size_px": 2048,
+    "raw_channel_count": 17,
+    "retained_channel_indices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+  },
+  "patch_qc": {
+    "nuclear_channel": "DAPI"
+  },
+  "segmentation": {
+    "nuclear_channel": "DAPI",
+    "boundary_channels": [
+      "CD3e", "CD56", "Pan-Cytokeratin", "CD4", "CD34", "SMA", "CD163", "CD11c", "MPO", "CD68", "HLA-DR"
+    ],
+    "image_mpp": null,
+    "parameter_status": "requires_source_audit"
+  },
+  "output": {
+    "root_dir": "../../outputs/preprocessing/spatch_codex"
+  }
+}

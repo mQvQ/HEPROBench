@@ -1,0 +1,43 @@
+{
+  "extends": "_dataset_base.json",
+  "dataset": {
+    "name": "CRC-mIHC-P1",
+    "scenario": "co-stained",
+    "technology": "mIHC",
+    "specimen_type": "WSI",
+    "channel_count": 7,
+    "root_dir": "../../data/crc_mihc_p1",
+    "channel_names_file": "crc_mihc_p1_channels.json",
+    "access": {
+      "status": "controlled_private",
+      "data_in_repository": false,
+      "manifest_policy": "deidentified_ids_only"
+    }
+  },
+  "reproduction": {
+    "status": "partially_verified",
+    "evidence": "Channel panel, normalization, QC, and cell aggregation were cross-checked; Mesmer boundary/Mpp settings require source-log confirmation."
+  },
+  "registration_qc": {
+    "raw_nuclear_channel": "DAPI",
+    "raw_nuclear_channel_index": 0
+  },
+  "tiling": {
+    "fov_definition": "non-overlapping 2048x2048 WSI region",
+    "fov_size_px": 2048,
+    "raw_channel_count": 7,
+    "retained_channel_indices": [0, 1, 2, 3, 4, 5, 6]
+  },
+  "patch_qc": {
+    "nuclear_channel": "DAPI"
+  },
+  "segmentation": {
+    "nuclear_channel": "DAPI",
+    "boundary_channels": ["CD3", "CD4", "CD20", "PANCK", "CD8"],
+    "image_mpp": null,
+    "parameter_status": "requires_source_log_confirmation"
+  },
+  "output": {
+    "root_dir": "../../outputs/preprocessing/crc_mihc_p1"
+  }
+}

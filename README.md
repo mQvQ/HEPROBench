@@ -33,7 +33,7 @@ predictions then use one HDF5 contract and one evaluation interface.
 | **Runnable examples** | Synthetic H&E images, multiplex targets, and small checkpoints for local testing. |
 | **Submission validation** | Structured HDF5 output validation before evaluation. |
 | **Metrics** | Paper image metrics (RMSE, PSNR, SSIM, LPIPS, DISTS), diagnostic MAE/MSE/Pearson, slide-macro aggregation, cell PCC/classification, and computational efficiency. |
-| **Preprocessing/QC** | JSON-driven CRC-CODEX reference: grouped split, VALIS/manual registration QC, tiling, train-only normalization, patch QC, Mesmer, cell extraction, and GMM gating. |
+| **Preprocessing/QC** | One JSON-driven pipeline plus dataset-specific adapters for all nine datasets: grouped split, registration/manual QC, FOV-aware tiling, normalization, patch QC, Mesmer, cell extraction, and GMM gating. |
 
 ## Quick Start
 
@@ -156,6 +156,12 @@ layout, two-phase commands, the exact legacy normalization, robust-NMI
 definition, Mesmer inputs, GMM gating, and output schemas are documented in
 [the CRC-CODEX preprocessing reference](docs/preprocessing_crc_codex.md). The
 bundled manifest row is a format example, not real study data.
+
+The same CLI supports the other eight datasets through configs in
+[`configs/preprocessing`](configs/preprocessing). Their panel maps, access
+status, FOV rules, and historical-parameter audit status are summarized in the
+[nine-dataset preprocessing reference](docs/preprocessing_datasets.md). No
+private cohort data or real identifiers are stored in this repository.
 
 ### 6. Run the retained lightweight demo
 

@@ -8,7 +8,7 @@ from PIL import Image
 
 class cityscapes:
     def __init__(self, data_path):
-        # data_path something like /data2/cityscapes
+        # data_path something like /path/to/cityscapes
         self.dir = data_path
         self.classes = ['road', 'sidewalk', 'building', 'wall', 'fence',
                         'pole', 'traffic light', 'traffic sign', 'vegetation', 'terrain',

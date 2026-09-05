@@ -7,7 +7,10 @@ __pycache__/
 outputs/*
 !outputs/.gitkeep
 
+# Local raw data and study manifests may belong to controlled cohorts.
+# Reviewer data are distributed separately and must never be committed here.
+/data/
+
 *.egg-info/
 dist/
 build/
-

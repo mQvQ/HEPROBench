@@ -19,10 +19,10 @@ schemas are included. Raw H&E/CODEX images and the study split manifest are not
 redistributed. The one-row CSV under `configs/preprocessing/templates/` is a
 schema example with fictional paths and is not study data.
 
-The reviewer-facing release must also add the exact CRC-CODEX download
-accession/URL and raw-file checksums. They are not inferred here because the
-current manuscript Data Availability section still contains a link
-placeholder; publishing an unverified source would undermine reproducibility.
+The source study is Schürch et al., Mendeley Data DOI
+`10.17632/mpjzbtfgfr.1` (CC BY 4.0). The reviewer demo is distributed
+separately and must include its own file manifest and SHA-256 checksums; binary
+data are not committed to this repository.
 
 For exact paper-result reproduction, the authors must additionally release the
 de-identified patient-level split manifest for this public cohort, or at least
@@ -146,10 +146,12 @@ spaced pixels per patch) and accumulated with t-digest. The transformation
 used by the benchmark experiment code is:
 
 ```text
-uint8(clip(log1p(clip(x, 0, q) / q) * 255, 0, 255))
+cast_to_input_dtype(clip(log1p(clip(x, 0, q) / q) * 255, 0, 255))
 ```
 
-`divide_by_log2` is intentionally `false`. This reproduces the retained
+`divide_by_log2` is intentionally `false`, and the NumPy container dtype is
+preserved because the historical script assigned per-channel `uint8` values
+back into the loaded array before saving. This reproduces the retained
 experiment scripts, whose theoretical maximum is `255 * log(2)`, rather than a
 formula divided by `log(2)`. The manuscript must use the same equation or
 explicitly label a corrected normalization as a new preprocessing version.
@@ -261,8 +263,8 @@ set `data.csv_path` to `splits/{split}.csv`, and set
 
 ## Scope
 
-This reference implementation exposes and verifies one complete cohort
-protocol. It does not establish that all other eight cohorts used identical
-channel references, thresholds, boundary-marker panels, or FOV definitions.
-Those differences must be captured in additional dataset JSONs before claiming
-full nine-dataset preprocessing reproducibility.
+This page is the detailed CRC-CODEX tutorial. The other eight dataset-specific
+channel references, boundary panels, FOV definitions, access declarations, and
+parameter-audit states are recorded in
+[`preprocessing_datasets.md`](preprocessing_datasets.md). Only adapters marked
+`verified` should currently be described as exact historical reproductions.

@@ -1,0 +1,47 @@
+{
+  "extends": "_dataset_base.json",
+  "dataset": {
+    "name": "MT-CODEX",
+    "scenario": "co-stained",
+    "technology": "CODEX",
+    "specimen_type": "TMA",
+    "channel_count": 60,
+    "root_dir": "../../data/mt_codex",
+    "channel_names_file": "mt_codex_channels.json",
+    "access": {
+      "status": "external_not_redistributed",
+      "data_in_repository": false,
+      "manifest_policy": "deidentified_ids_only"
+    }
+  },
+  "reproduction": {
+    "status": "verified",
+    "evidence": "Parameters and the 88-to-60 channel selection were cross-checked against retained scripts."
+  },
+  "registration_qc": {
+    "raw_nuclear_channel": "DRAQ5",
+    "raw_nuclear_channel_index": 87
+  },
+  "tiling": {
+    "fov_definition": "one TMA core",
+    "fov_size_px": null,
+    "raw_channel_count": 88,
+    "retained_channel_indices": [
+      4, 5, 6, 7, 9, 10, 11, 13, 14, 15, 17, 18, 19, 21, 22, 23, 25, 26,
+      27, 29, 30, 31, 33, 34, 35, 37, 38, 39, 41, 42, 43, 45, 46, 47, 49, 50,
+      51, 53, 54, 55, 57, 58, 59, 61, 62, 63, 65, 66, 67, 69, 70, 71, 73, 74,
+      75, 77, 78, 79, 86, 87
+    ]
+  },
+  "patch_qc": {
+    "nuclear_channel": "DRAQ5"
+  },
+  "segmentation": {
+    "nuclear_channel": "DRAQ5",
+    "boundary_channels": ["Na-K-ATPase"],
+    "image_mpp": 0.69
+  },
+  "output": {
+    "root_dir": "../../outputs/preprocessing/mt_codex"
+  }
+}

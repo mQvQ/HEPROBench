@@ -1,0 +1,43 @@
+{
+  "extends": "_dataset_base.json",
+  "dataset": {
+    "name": "STAD-mIHC",
+    "scenario": "co-stained",
+    "technology": "mIHC",
+    "specimen_type": "TMA",
+    "channel_count": 11,
+    "root_dir": "../../data/stad_mihc",
+    "channel_names_file": "stad_mihc_channels.json",
+    "access": {
+      "status": "controlled_private",
+      "data_in_repository": false,
+      "manifest_policy": "deidentified_ids_only"
+    }
+  },
+  "reproduction": {
+    "status": "pending_source_audit",
+    "evidence": "Panel and benchmark-wide protocol are known; the source preprocessing mount is unavailable and exact cohort settings must be audited before paper-result reproduction is claimed."
+  },
+  "registration_qc": {
+    "raw_nuclear_channel": "DAPI",
+    "raw_nuclear_channel_index": 0
+  },
+  "tiling": {
+    "fov_definition": "one TMA core",
+    "fov_size_px": null,
+    "raw_channel_count": 11,
+    "retained_channel_indices": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  },
+  "patch_qc": {
+    "nuclear_channel": "DAPI"
+  },
+  "segmentation": {
+    "nuclear_channel": "DAPI",
+    "boundary_channels": ["CD8A", "CD66B", "CD163", "CD68", "CD3", "CD20", "PANCK"],
+    "image_mpp": null,
+    "parameter_status": "requires_source_audit"
+  },
+  "output": {
+    "root_dir": "../../outputs/preprocessing/stad_mihc"
+  }
+}

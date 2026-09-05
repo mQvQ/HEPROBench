@@ -1,0 +1,45 @@
+{
+  "extends": "_dataset_base.json",
+  "dataset": {
+    "name": "NSCLC-IMC",
+    "scenario": "adjacent",
+    "technology": "IMC",
+    "specimen_type": "TMA",
+    "channel_count": 28,
+    "root_dir": "../../data/nsclc_imc",
+    "channel_names_file": "nsclc_imc_channels.json",
+    "access": {
+      "status": "external_not_redistributed",
+      "data_in_repository": false,
+      "manifest_policy": "deidentified_ids_only"
+    }
+  },
+  "reproduction": {
+    "status": "verified",
+    "evidence": "Normalization, QC, and Mesmer inputs were cross-checked against retained scripts."
+  },
+  "registration_qc": {
+    "raw_nuclear_channel": "DNA1",
+    "raw_nuclear_channel_index": 27
+  },
+  "tiling": {
+    "fov_definition": "one TMA core",
+    "fov_size_px": null,
+    "raw_channel_count": 28,
+    "retained_channel_indices": [
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+      14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27
+    ]
+  },
+  "patch_qc": {
+    "nuclear_channel": "DNA1"
+  },
+  "segmentation": {
+    "nuclear_channel": "DNA1",
+    "boundary_channels": ["aSMA", "Vimentin", "Pancytokeratin", "CD45"],
+    "image_mpp": 0.69
+  },
+  "output": {
+    "root_dir": "../../outputs/preprocessing/nsclc_imc"
+  }
+}

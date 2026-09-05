@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 import os
+import re
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,6 +28,9 @@ STAGES = (
     "cell-extract",
     "gate",
 )
+
+
+_SAFE_ID = re.compile(r"^[A-Za-z0-9_.\[\],+-]+$")
 
 
 def _utc_now() -> str:
@@ -80,6 +84,36 @@ def _relative(path: Path, root: Path) -> str:
         return str(path.resolve().relative_to(root.resolve()))
     except ValueError:
         return str(path.resolve())
+
+
+def _safe_id(value: Any, description: str) -> str:
+    identifier = str(value).strip()
+    if not identifier or not _SAFE_ID.fullmatch(identifier) or identifier in {".", ".."}:
+        raise ValueError(
+            f"{description} must be a non-empty filesystem-safe identifier "
+            "using letters, numbers, '_', '-', '.', '[', ']', ',', or '+': "
+            f"{identifier!r}"
+        )
+    return identifier
+
+
+def _canonical_identifiers(ctx: dict[str, Any], row: dict[str, str]) -> tuple[str, str, str]:
+    columns = ctx["config"]["dataset"].get("columns", {})
+    slide_col = str(columns.get("slide_id", "slide_id"))
+    sample_col = str(columns.get("sample_id", slide_col))
+    fov_col = str(columns.get("fov_id", sample_col))
+    sample_id = _safe_id(row.get(sample_col, ""), "sample_id")
+    slide_name = _safe_id(row.get(slide_col, ""), "slide_id")
+    fov_name = _safe_id(row.get(fov_col, ""), "fov_id")
+    return sample_id, slide_name, fov_name
+
+
+def _as_nonnegative_int(value: Any, description: str) -> int:
+    text = str(value).strip()
+    number = 0 if text == "" else int(text)
+    if number < 0:
+        raise ValueError(f"{description} must be non-negative, received {number}")
+    return number
 
 
 def _stage_report(
@@ -151,6 +185,65 @@ def _channels(ctx: dict[str, Any]) -> list[str]:
     return channels
 
 
+def _validate_preprocessing_config(ctx: dict[str, Any]) -> list[str]:
+    config = ctx["config"]
+    dataset = config["dataset"]
+    channels = _channels(ctx)
+    declared_count = dataset.get("channel_count")
+    if declared_count is not None and int(declared_count) != len(channels):
+        raise ValueError(
+            f"dataset.channel_count={declared_count} does not match {len(channels)} channel names"
+        )
+    access = dataset.get("access", {})
+    if access and access.get("data_in_repository") is not False:
+        raise ValueError("Dataset preprocessing configs must set access.data_in_repository=false")
+
+    tiling = config.get("tiling", {})
+    if tiling:
+        raw_count = int(tiling.get("raw_channel_count", len(channels)))
+        indices = [int(value) for value in tiling.get("retained_channel_indices", range(raw_count))]
+        if len(indices) != len(channels):
+            raise ValueError("tiling.retained_channel_indices must match channel_names_file length")
+        if not indices or min(indices) < 0 or max(indices) >= raw_count:
+            raise ValueError("tiling.retained_channel_indices must be within tiling.raw_channel_count")
+        patch_size = int(tiling.get("patch_size", 256))
+        fov_size = tiling.get("fov_size_px")
+        if fov_size is not None and (int(fov_size) < patch_size or int(fov_size) % patch_size):
+            raise ValueError("tiling.fov_size_px must be null or a positive multiple of patch_size")
+
+    registration = config.get("registration", {})
+    method = str(registration.get("method", "valis")).lower().replace("-", "_")
+    if method not in {"valis", "identity", "pre_registered"}:
+        raise ValueError("registration.method must be one of: valis, identity, pre_registered")
+
+    registration_qc = config.get("registration_qc", {})
+    if registration_qc.get("enabled", True) and tiling:
+        raw_index = int(registration_qc.get("raw_nuclear_channel_index", 0))
+        if raw_index < 0 or raw_index >= int(tiling.get("raw_channel_count", len(channels))):
+            raise ValueError("registration_qc.raw_nuclear_channel_index is outside the raw channel panel")
+
+    patch_qc = config.get("patch_qc", {})
+    if patch_qc.get("enabled", True) and patch_qc:
+        nuclear = str(patch_qc.get("nuclear_channel", ""))
+        if nuclear not in channels:
+            raise ValueError(f"Unknown patch_qc.nuclear_channel: {nuclear!r}")
+
+    segmentation = config.get("segmentation", {})
+    if segmentation:
+        required = [str(segmentation.get("nuclear_channel", "")), *segmentation.get("boundary_channels", [])]
+        unknown = sorted({name for name in required if name not in channels})
+        if unknown:
+            raise ValueError(f"Unknown segmentation channels: {unknown}")
+        if not segmentation.get("boundary_channels"):
+            raise ValueError("segmentation.boundary_channels must contain at least one marker")
+
+    warnings: list[str] = []
+    reproduction = config.get("reproduction", {})
+    if reproduction.get("status") not in {"verified", "partially_verified", "pending_source_audit"}:
+        warnings.append("reproduction.status is not declared")
+    return warnings
+
+
 def _raw_path(ctx: dict[str, Any], value: str) -> Path:
     return _resolve(value, ctx["data_root"])
 
@@ -169,26 +262,40 @@ def _resolved_config_payload(ctx: dict[str, Any]) -> dict[str, Any]:
 
 
 def _split(ctx: dict[str, Any]) -> dict[str, Any]:
-    source = _require_file(ctx["manifest"], "CRC-CODEX slide manifest")
+    source = _require_file(ctx["manifest"], "dataset sample manifest")
     rows = _read_csv(source)
     if not rows:
         raise ValueError(f"Slide manifest contains no records: {source}")
     cfg = ctx["config"].get("split", {})
     columns = ctx["config"]["dataset"].get("columns", {})
     slide_col = columns.get("slide_id", "slide_id")
+    sample_col = columns.get("sample_id", slide_col)
+    fov_col = columns.get("fov_id", sample_col)
     group_col = cfg.get("group_column", "patient_id")
     split_col = cfg.get("split_column", "split")
-    required = {slide_col, group_col, columns.get("he_path", "he_path"), columns.get("target_path", "target_path")}
+    required = {
+        slide_col,
+        sample_col,
+        fov_col,
+        group_col,
+        columns.get("he_path", "he_path"),
+        columns.get("target_path", "target_path"),
+    }
     missing = sorted(required.difference(rows[0]))
     if missing:
         raise ValueError(f"Slide manifest is missing columns: {', '.join(missing)}")
-    if len({row[slide_col] for row in rows}) != len(rows):
-        raise ValueError(f"Slide IDs must be unique in {source}")
+    for row in rows:
+        sample_id, slide_name, fov_name = _canonical_identifiers(ctx, row)
+        row["sample_id"] = sample_id
+        row["slide_name"] = slide_name
+        row["fov_name"] = fov_name
+    if len({row["sample_id"] for row in rows}) != len(rows):
+        raise ValueError(f"Sample IDs must be unique in {source}")
     groups: dict[str, list[int]] = defaultdict(list)
     for index, row in enumerate(rows):
         group = str(row.get(group_col, "")).strip()
         if not group:
-            raise ValueError(f"Empty {group_col!r} for slide {row.get(slide_col)!r}")
+            raise ValueError(f"Empty {group_col!r} for sample {row.get(sample_col)!r}")
         groups[group].append(index)
     existing = [str(row.get(split_col, "")).strip() for row in rows]
     reuse = bool(cfg.get("reuse_existing", True)) and all(value in {"train", "valid", "test"} for value in existing)
@@ -236,19 +343,35 @@ def _register(ctx: dict[str, Any]) -> dict[str, Any]:
     rows = _read_csv(source)
     cfg = ctx["config"].get("registration", {})
     columns = ctx["config"]["dataset"].get("columns", {})
-    slide_col = columns.get("slide_id", "slide_id")
     he_col = columns.get("he_path", "he_path")
     target_col = columns.get("target_path", "target_path")
-    try:
-        from valis import registration
-    except ImportError as exc:
-        raise RuntimeError("Registration requires valis-wsi; install requirements-preprocessing.txt") from exc
+    method = str(cfg.get("method", "valis")).strip().lower().replace("-", "_")
+    if method not in {"valis", "identity", "pre_registered"}:
+        raise ValueError("registration.method must be one of: valis, identity, pre_registered")
+    registration = None
+    if method == "valis":
+        try:
+            from valis import registration as valis_registration
+        except ImportError as exc:
+            raise RuntimeError("Registration requires valis-wsi; install requirements-preprocessing.txt") from exc
+        registration = valis_registration
     registered_rows: list[dict[str, Any]] = []
     for row in rows:
-        slide_id = row[slide_col]
-        he_path = _require_file(_raw_path(ctx, row[he_col]), f"H&E slide for {slide_id}")
-        target_path = _require_file(_raw_path(ctx, row[target_col]), f"CODEX slide for {slide_id}")
-        pair_dir = ctx["output_root"] / "registration" / slide_id
+        sample_id = row["sample_id"]
+        he_path = _require_file(_raw_path(ctx, row[he_col]), f"H&E image for {sample_id}")
+        target_path = _require_file(_raw_path(ctx, row[target_col]), f"multiplex image for {sample_id}")
+        if method in {"identity", "pre_registered"}:
+            registered_rows.append(
+                {
+                    **row,
+                    "registered_he_path": str(he_path),
+                    "registered_target_path": str(target_path),
+                    "registration_error_csv": "",
+                    "registration_status": "pre_registered",
+                }
+            )
+            continue
+        pair_dir = ctx["output_root"] / "registration" / sample_id
         input_dir = pair_dir / "inputs"
         result_dir = pair_dir / "valis"
         registered_dir = pair_dir / "registered"
@@ -262,6 +385,7 @@ def _register(ctx: dict[str, Any]) -> dict[str, Any]:
         registered_he = registered_dir / "he_registered.ome.tiff"
         error_csv = result_dir / "registration_error.csv"
         if not registered_he.exists() or not bool(cfg.get("skip_existing", True)):
+            assert registration is not None
             registrar = registration.Valis(
                 str(input_dir),
                 str(result_dir),
@@ -289,7 +413,8 @@ def _register(ctx: dict[str, Any]) -> dict[str, Any]:
             }
         )
     try:
-        registration.kill_jvm()
+        if registration is not None:
+            registration.kill_jvm()
     except Exception:
         pass
     destination = ctx["output_root"] / "manifests" / "registered_slides.csv"
@@ -299,7 +424,12 @@ def _register(ctx: dict[str, Any]) -> dict[str, Any]:
         "register",
         inputs=[source],
         outputs=[destination],
-        details={"n_registered": len(registered_rows), "reference_modality": "CODEX", "moving_modality": "H&E"},
+        details={
+            "n_registered": len(registered_rows),
+            "method": method,
+            "reference_modality": cfg.get("reference_modality", "multiplex"),
+            "moving_modality": cfg.get("moving_modality", "H&E"),
+        },
     )
 
 
@@ -350,8 +480,21 @@ def _registration_qc(ctx: dict[str, Any]) -> dict[str, Any]:
     source = _require_file(ctx["output_root"] / "manifests" / "registered_slides.csv", "registered manifest")
     rows = _read_csv(source)
     destination = ctx["output_root"] / "registration_qc" / "registration_qc.csv"
-    previous = {row["slide_id"]: row for row in _read_csv(destination)} if destination.exists() else {}
     cfg = ctx["config"].get("registration_qc", {})
+    previous = {row["sample_id"]: row for row in _read_csv(destination)} if destination.exists() else {}
+    if not bool(cfg.get("enabled", True)):
+        output_rows = [
+            {**row, "overlay_path": "", "decision": "accepted", "notes": "QC disabled by config"}
+            for row in rows
+        ]
+        _write_csv(destination, output_rows)
+        return _stage_report(
+            ctx,
+            "registration-qc",
+            inputs=[source],
+            outputs=[destination],
+            details={"enabled": False, "decision_counts": {"accepted": len(output_rows)}},
+        )
     raw_count = int(ctx["config"].get("tiling", {}).get("raw_channel_count", 92))
     raw_nuclear = int(cfg.get("raw_nuclear_channel_index", 91))
     max_side = int(cfg.get("thumbnail_max_side", 1024))
@@ -359,7 +502,7 @@ def _registration_qc(ctx: dict[str, Any]) -> dict[str, Any]:
     from PIL import Image
 
     for row in rows:
-        slide_id = row["slide_id"]
+        sample_id = row["sample_id"]
         he = _read_array(Path(row["registered_he_path"]))
         if he.ndim == 2:
             he = np.repeat(he[..., None], 3, axis=-1)
@@ -371,7 +514,7 @@ def _registration_qc(ctx: dict[str, Any]) -> dict[str, Any]:
             ctx["config"].get("tiling", {}).get("target_channel_axis", "auto"),
         )
         if raw_nuclear >= target.shape[-1]:
-            raise ValueError(f"raw_nuclear_channel_index={raw_nuclear} exceeds target channels for {slide_id}")
+            raise ValueError(f"raw_nuclear_channel_index={raw_nuclear} exceeds target channels for {sample_id}")
         h_ref = 255 - _scale_uint8(he[..., 0])
         nuclear = _scale_uint8(target[..., raw_nuclear])
         height = min(h_ref.shape[0], nuclear.shape[0])
@@ -382,15 +525,17 @@ def _registration_qc(ctx: dict[str, Any]) -> dict[str, Any]:
         h_thumb = np.asarray(Image.fromarray(h_ref).resize(size, Image.Resampling.BILINEAR))
         n_thumb = np.asarray(Image.fromarray(nuclear).resize(size, Image.Resampling.BILINEAR))
         overlay = np.stack([h_thumb, n_thumb, np.zeros_like(h_thumb)], axis=-1)
-        overlay_path = ctx["output_root"] / "registration_qc" / "overlays" / f"{slide_id}.jpg"
+        overlay_path = ctx["output_root"] / "registration_qc" / "overlays" / f"{sample_id}.jpg"
         overlay_path.parent.mkdir(parents=True, exist_ok=True)
         Image.fromarray(overlay).save(overlay_path, quality=90)
-        old = previous.get(slide_id, {})
+        old = previous.get(sample_id, {})
         output_rows.append(
             {
                 **row,
                 "overlay_path": str(overlay_path),
-                "decision": old.get("decision", "pending"),
+                "decision": old.get(
+                    "decision", "pending" if bool(cfg.get("require_manual_acceptance", True)) else "accepted"
+                ),
                 "notes": old.get("notes", ""),
             }
         )
@@ -404,6 +549,7 @@ def _registration_qc(ctx: dict[str, Any]) -> dict[str, Any]:
         inputs=[source],
         outputs=[destination],
         details={
+            "enabled": True,
             "decision_counts": dict(decisions),
             "instruction": "Inspect each overlay and set decision to accepted or rejected before tiling.",
         },
@@ -413,11 +559,17 @@ def _registration_qc(ctx: dict[str, Any]) -> dict[str, Any]:
 def _accepted_registered_rows(ctx: dict[str, Any]) -> tuple[list[dict[str, str]], Path]:
     source = _require_file(ctx["output_root"] / "registration_qc" / "registration_qc.csv", "registration QC table")
     rows = _read_csv(source)
+    for row in rows:
+        if not all(row.get(key) for key in ("sample_id", "slide_name", "fov_name")):
+            sample_id, slide_name, fov_name = _canonical_identifiers(ctx, row)
+            row["sample_id"] = sample_id
+            row["slide_name"] = slide_name
+            row["fov_name"] = fov_name
     cfg = ctx["config"].get("registration_qc", {})
     if bool(cfg.get("require_manual_acceptance", True)):
-        pending = [row["slide_id"] for row in rows if row.get("decision", "").strip().lower() == "pending"]
+        pending = [row["sample_id"] for row in rows if row.get("decision", "").strip().lower() == "pending"]
         invalid = [
-            row["slide_id"]
+            row["sample_id"]
             for row in rows
             if row.get("decision", "").strip().lower() not in {"accepted", "rejected", "pending"}
         ]
@@ -435,17 +587,32 @@ def _tile(ctx: dict[str, Any]) -> dict[str, Any]:
     patch_size = int(cfg.get("patch_size", 256))
     stride = int(cfg.get("stride", patch_size))
     if stride != patch_size:
-        raise ValueError("The reference CRC-CODEX cell pipeline currently requires non-overlapping patches")
+        raise ValueError("The FOV-level cell pipeline requires non-overlapping patches")
     raw_count = int(cfg.get("raw_channel_count", 92))
-    retained_indices = [int(value) for value in cfg.get("retained_channel_indices", [])]
+    fov_size_value = cfg.get("fov_size_px")
+    fov_size = int(fov_size_value) if fov_size_value is not None else None
+    if fov_size is not None and (fov_size < patch_size or fov_size % patch_size):
+        raise ValueError("tiling.fov_size_px must be null or a positive multiple of patch_size")
     channels = _channels(ctx)
+    retained_indices = [int(value) for value in cfg.get("retained_channel_indices", range(raw_count))]
     if len(retained_indices) != len(channels):
         raise ValueError("tiling.retained_channel_indices must match channel_names_file length")
+    if not retained_indices or min(retained_indices) < 0:
+        raise ValueError("tiling.retained_channel_indices must contain non-negative channel indices")
+    columns = ctx["config"]["dataset"].get("columns", {})
+    origin_y_col = str(columns.get("origin_y_px", "origin_y_px"))
+    origin_x_col = str(columns.get("origin_x_px", "origin_x_px"))
     from PIL import Image
 
     patch_rows: list[dict[str, Any]] = []
     for row in rows:
-        slide_id = row["slide_id"]
+        sample_id = row["sample_id"]
+        slide_name = row["slide_name"]
+        fov_name = row["fov_name"]
+        origin_y = _as_nonnegative_int(row.get(origin_y_col, 0), origin_y_col)
+        origin_x = _as_nonnegative_int(row.get(origin_x_col, 0), origin_x_col)
+        if origin_y % patch_size or origin_x % patch_size:
+            raise ValueError(f"FOV origins for {sample_id} must be multiples of patch_size={patch_size}")
         he = _read_array(Path(row["registered_he_path"]))
         if he.ndim == 2:
             he = np.repeat(he[..., None], 3, axis=-1)
@@ -458,31 +625,54 @@ def _tile(ctx: dict[str, Any]) -> dict[str, Any]:
             _read_array(Path(row["registered_target_path"])), raw_count, cfg.get("target_channel_axis", "auto")
         )
         if max(retained_indices) >= target.shape[-1]:
-            raise ValueError(f"Retained channel index exceeds available channels for {slide_id}: {target.shape}")
+            raise ValueError(f"Retained channel index exceeds available channels for {sample_id}: {target.shape}")
         target = target[..., retained_indices]
         height = min(he.shape[0], target.shape[0])
         width = min(he.shape[1], target.shape[1])
         for y in range(0, height - patch_size + 1, stride):
             for x in range(0, width - patch_size + 1, stride):
-                rr, cc = y // patch_size, x // patch_size
-                stem = f"{slide_id}_patch_{rr:03d}_{cc:03d}"
-                he_path = ctx["output_root"] / "patches" / "he" / slide_id / f"{stem}.jpg"
-                raw_path = ctx["output_root"] / "patches" / "target_raw" / slide_id / f"{stem}.npy"
+                if fov_size is None:
+                    tile_fov_name = fov_name
+                    fov_row, fov_col = y // patch_size, x // patch_size
+                else:
+                    fov_grid_row, fov_grid_col = y // fov_size, x // fov_size
+                    tile_fov_name = f"{fov_name}_fov_{fov_grid_row:03d}_{fov_grid_col:03d}"
+                    fov_row = (y % fov_size) // patch_size
+                    fov_col = (x % fov_size) // patch_size
+                rr, cc = origin_y // patch_size + fov_row, origin_x // patch_size + fov_col
+                if fov_size is not None:
+                    rr += (y // fov_size) * (fov_size // patch_size)
+                    cc += (x // fov_size) * (fov_size // patch_size)
+                stem = f"{sample_id}_patch_{fov_row:03d}_{fov_col:03d}"
+                if fov_size is not None:
+                    stem = f"{sample_id}_fov_{fov_grid_row:03d}_{fov_grid_col:03d}_patch_{fov_row:03d}_{fov_col:03d}"
+                he_path = ctx["output_root"] / "patches" / "he" / tile_fov_name / f"{stem}.jpg"
+                raw_path = ctx["output_root"] / "patches" / "target_raw" / tile_fov_name / f"{stem}.npy"
                 he_path.parent.mkdir(parents=True, exist_ok=True)
                 raw_path.parent.mkdir(parents=True, exist_ok=True)
                 Image.fromarray(he[y : y + patch_size, x : x + patch_size]).save(he_path, quality=95)
                 np.save(raw_path, target[y : y + patch_size, x : x + patch_size])
                 patch_rows.append(
                     {
-                        "slide_name": slide_id,
-                        "patient_id": row.get("patient_id", ""),
+                        "slide_name": slide_name,
+                        "sample_id": sample_id,
+                        "fov_name": tile_fov_name,
+                        "group_id": row.get(ctx["config"].get("split", {}).get("group_column", "group_id"), ""),
                         "row": rr,
                         "col": cc,
+                        "fov_row": fov_row,
+                        "fov_col": fov_col,
                         "split": row["split"],
                         "image_path": _relative(he_path, ctx["output_root"]),
                         "target_raw_path": _relative(raw_path, ctx["output_root"]),
                     }
                 )
+    keys = [(row["slide_name"], row["row"], row["col"]) for row in patch_rows]
+    if len(keys) != len(set(keys)):
+        raise ValueError(
+            "Duplicate (slide_name,row,col) coordinates were generated. Give each FOV a unique slide_id "
+            "or provide non-overlapping origin_y_px/origin_x_px values in the sample manifest."
+        )
     destination = ctx["output_root"] / "manifests" / "patches_raw.csv"
     channel_destination = ctx["output_root"] / "channel_names.json"
     _write_csv(destination, patch_rows)
@@ -492,11 +682,24 @@ def _tile(ctx: dict[str, Any]) -> dict[str, Any]:
         "tile",
         inputs=[source, ctx["channels_file"]],
         outputs=[destination, channel_destination],
-        details={"n_fovs": len(rows), "n_patches": len(patch_rows), "patch_size": patch_size, "stride": stride},
+        details={
+            "n_input_samples": len(rows),
+            "n_fovs": len({row["fov_name"] for row in patch_rows}),
+            "n_patches": len(patch_rows),
+            "patch_size": patch_size,
+            "stride": stride,
+            "fov_size_px": fov_size,
+        },
     )
 
 
-def _legacy_normalize(array: np.ndarray, quantiles: np.ndarray, *, divide_by_log2: bool = False) -> np.ndarray:
+def _legacy_normalize(
+    array: np.ndarray,
+    quantiles: np.ndarray,
+    *,
+    divide_by_log2: bool = False,
+    output_dtype: str = "uint8",
+) -> np.ndarray:
     values = np.asarray(array, dtype=np.float32)
     q = np.asarray(quantiles, dtype=np.float32)
     if values.shape[-1] != q.size:
@@ -505,7 +708,9 @@ def _legacy_normalize(array: np.ndarray, quantiles: np.ndarray, *, divide_by_log
     normalized = np.log1p(np.clip(values, 0, safe) / safe)
     if divide_by_log2:
         normalized /= np.log(2.0)
-    return np.uint8(np.clip(normalized * 255.0, 0.0, 255.0))
+    scaled = np.clip(normalized * 255.0, 0.0, 255.0)
+    dtype = array.dtype if output_dtype == "preserve_input" else np.dtype(output_dtype)
+    return scaled.astype(dtype)
 
 
 def _normalize(ctx: dict[str, Any]) -> dict[str, Any]:
@@ -513,6 +718,30 @@ def _normalize(ctx: dict[str, Any]) -> dict[str, Any]:
     rows = _read_csv(source)
     channels = _channels(ctx)
     cfg = ctx["config"].get("normalization", {})
+    transform = str(cfg.get("transform", "legacy_log1p")).strip().lower()
+    if transform in {"identity", "none", "pre_normalized"}:
+        output_rows = [{**row, "target_path": row["target_raw_path"]} for row in rows]
+        stats_path = ctx["output_root"] / "channel_stats.json"
+        _write_json(
+            stats_path,
+            {
+                "schema": "heprobench_channel_normalization_v1",
+                "transform": "identity",
+                "reason": cfg.get("reason", "Input values are already in the benchmark target range."),
+                "channels": {name: {} for name in channels},
+            },
+        )
+        destination = ctx["output_root"] / "manifests" / "patches_normalized.csv"
+        _write_csv(destination, output_rows)
+        return _stage_report(
+            ctx,
+            "normalize",
+            inputs=[source],
+            outputs=[stats_path, destination],
+            details={"n_normalized_patches": len(output_rows), "transform": "identity"},
+        )
+    if transform != "legacy_log1p":
+        raise ValueError("normalization.transform must be legacy_log1p or identity")
     percentile = float(cfg.get("percentile", 99.9))
     samples_per_patch = int(cfg.get("samples_per_patch", 10000))
     fit_rows = [row for row in rows if row["split"] == str(cfg.get("fit_split", "train"))]
@@ -532,6 +761,9 @@ def _normalize(ctx: dict[str, Any]) -> dict[str, Any]:
             digest.batch_update(sampled[:, index].astype(float).tolist())
     quantiles = np.asarray([digest.percentile(percentile) for digest in digests], dtype=np.float32)
     divide_by_log2 = bool(cfg.get("divide_by_log2", False))
+    output_dtype = str(cfg.get("output_dtype", "uint8"))
+    if output_dtype != "preserve_input":
+        np.dtype(output_dtype)
     output_rows: list[dict[str, Any]] = []
     for row in rows:
         raw_path = ctx["output_root"] / row["target_raw_path"]
@@ -539,11 +771,20 @@ def _normalize(ctx: dict[str, Any]) -> dict[str, Any]:
             ctx["output_root"]
             / "patches"
             / "target_norm"
-            / row["slide_name"]
+            / row.get("fov_name", row["slide_name"])
             / Path(row["target_raw_path"]).name
         )
         norm_path.parent.mkdir(parents=True, exist_ok=True)
-        np.save(norm_path, _legacy_normalize(np.load(raw_path), quantiles, divide_by_log2=divide_by_log2))
+        raw = np.load(raw_path)
+        np.save(
+            norm_path,
+            _legacy_normalize(
+                raw,
+                quantiles,
+                divide_by_log2=divide_by_log2,
+                output_dtype=output_dtype,
+            ),
+        )
         output_rows.append({**row, "target_path": _relative(norm_path, ctx["output_root"])})
     stats_path = ctx["output_root"] / "channel_stats.json"
     stats = {
@@ -554,6 +795,7 @@ def _normalize(ctx: dict[str, Any]) -> dict[str, Any]:
         "samples_per_patch": samples_per_patch,
         "transform": "log1p(clip(x, 0, q) / q) * 255",
         "divide_by_log2": divide_by_log2,
+        "output_dtype": output_dtype,
         "channels": {name: {"q": float(value)} for name, value in zip(channels, quantiles)},
     }
     _write_json(stats_path, stats)
@@ -564,7 +806,12 @@ def _normalize(ctx: dict[str, Any]) -> dict[str, Any]:
         "normalize",
         inputs=[source],
         outputs=[stats_path, destination],
-        details={"n_fit_patches": len(fit_rows), "n_normalized_patches": len(output_rows), "divide_by_log2": divide_by_log2},
+        details={
+            "n_fit_patches": len(fit_rows),
+            "n_normalized_patches": len(output_rows),
+            "divide_by_log2": divide_by_log2,
+            "output_dtype": output_dtype,
+        },
     )
 
 
@@ -601,6 +848,34 @@ def _patch_qc(ctx: dict[str, Any]) -> dict[str, Any]:
     rows = _read_csv(source)
     channels = _channels(ctx)
     cfg = ctx["config"].get("patch_qc", {})
+    if not bool(cfg.get("enabled", True)):
+        output_rows = [
+            {
+                **row,
+                "nuclear_std": "",
+                "nmi": "",
+                "robust_nmi": "",
+                "pass_nuclear_std": 1,
+                "pass_robust_nmi": 1,
+                "qc_pass": 1,
+            }
+            for row in rows
+        ]
+        qc_path = ctx["output_root"] / "manifests" / "patch_qc.csv"
+        _write_csv(qc_path, output_rows)
+        split_outputs: list[Path] = []
+        for split in ("train", "valid", "test"):
+            destination = ctx["output_root"] / "splits" / f"{split}.csv"
+            selected = [row for row in output_rows if row["split"] == split]
+            _write_csv(destination, selected, output_rows[0].keys() if output_rows else [])
+            split_outputs.append(destination)
+        return _stage_report(
+            ctx,
+            "patch-qc",
+            inputs=[source],
+            outputs=[qc_path, *split_outputs],
+            details={"enabled": False, "n_total": len(rows), "n_pass": len(rows)},
+        )
     nuclear_index = channels.index(str(cfg.get("nuclear_channel", "DRAQ5")))
     std_threshold = float(cfg.get("nuclear_std_min", 11.0))
     nmi_threshold = float(cfg.get("robust_nmi_min", 0.03))
@@ -644,6 +919,7 @@ def _patch_qc(ctx: dict[str, Any]) -> dict[str, Any]:
         inputs=[source],
         outputs=[qc_path, *split_outputs],
         details={
+            "enabled": True,
             "n_total": len(rows),
             "n_pass": sum(int(row["qc_pass"]) for row in output_rows),
             "nuclear_channel": channels[nuclear_index],
@@ -674,29 +950,45 @@ def _segment(ctx: dict[str, Any]) -> dict[str, Any]:
     app = Mesmer()
     grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
     for row in rows:
-        grouped[row["slide_name"]].append(row)
+        grouped[row.get("fov_name", row["slide_name"])].append(row)
     output_rows: list[dict[str, Any]] = []
-    for slide_name, slide_rows in grouped.items():
-        height = (max(int(row["row"]) for row in slide_rows) + 1) * patch_size
-        width = (max(int(row["col"]) for row in slide_rows) + 1) * patch_size
+    next_cell_id: dict[str, int] = defaultdict(int)
+    for fov_name, fov_rows in sorted(grouped.items()):
+        slide_names = {row["slide_name"] for row in fov_rows}
+        if len(slide_names) != 1:
+            raise ValueError(f"FOV {fov_name!r} is associated with multiple slide names")
+        slide_name = next(iter(slide_names))
+        height = (max(int(row.get("fov_row", row["row"])) for row in fov_rows) + 1) * patch_size
+        width = (max(int(row.get("fov_col", row["col"])) for row in fov_rows) + 1) * patch_size
         nuclear = np.zeros((height, width), dtype=np.float32)
-        boundary = np.zeros((height, width), dtype=np.float32)
-        for row in slide_rows:
+        boundary_channels = np.zeros((height, width, len(boundary_indices)), dtype=np.float32)
+        for row in fov_rows:
             target = np.load(ctx["output_root"] / row["target_path"])
-            y, x = int(row["row"]) * patch_size, int(row["col"]) * patch_size
+            y = int(row.get("fov_row", row["row"])) * patch_size
+            x = int(row.get("fov_col", row["col"])) * patch_size
             nuclear[y : y + patch_size, x : x + patch_size] = target[..., nuclear_index]
-            membrane = np.max(np.stack([_minmax(target[..., index]) for index in boundary_indices]), axis=0)
-            boundary[y : y + patch_size, x : x + patch_size] = membrane
-        model_input = np.stack([_minmax(nuclear), _minmax(boundary)], axis=-1)[None]
-        prediction = app.predict(
-            model_input,
-            image_mpp=float(cfg.get("image_mpp", 0.69)),
-            postprocess_kwargs_whole_cell={"maxima_algorithm": str(cfg.get("maxima_algorithm", "peak_local_max"))},
+            boundary_channels[y : y + patch_size, x : x + patch_size, :] = target[..., boundary_indices]
+        boundary = np.max(
+            np.stack([_minmax(boundary_channels[..., index]) for index in range(len(boundary_indices))]),
+            axis=0,
         )
+        model_input = np.stack([_minmax(nuclear), _minmax(boundary)], axis=-1)[None]
+        predict_kwargs: dict[str, Any] = {
+            "postprocess_kwargs_whole_cell": {
+                "maxima_algorithm": str(cfg.get("maxima_algorithm", "peak_local_max"))
+            }
+        }
+        if cfg.get("image_mpp", 0.69) is not None:
+            predict_kwargs["image_mpp"] = float(cfg["image_mpp"])
+        prediction = app.predict(model_input, **predict_kwargs)
         labels = np.asarray(prediction).squeeze().astype(np.int32)
-        for row in slide_rows:
-            y, x = int(row["row"]) * patch_size, int(row["col"]) * patch_size
-            mask_path = ctx["output_root"] / "patches" / "masks" / slide_name / Path(row["target_path"]).name
+        positive = labels > 0
+        labels[positive] += next_cell_id[slide_name]
+        next_cell_id[slide_name] = int(labels.max(initial=next_cell_id[slide_name]))
+        for row in fov_rows:
+            y = int(row.get("fov_row", row["row"])) * patch_size
+            x = int(row.get("fov_col", row["col"])) * patch_size
+            mask_path = ctx["output_root"] / "patches" / "masks" / fov_name / Path(row["target_path"]).name
             mask_path.parent.mkdir(parents=True, exist_ok=True)
             np.save(mask_path, labels[y : y + patch_size, x : x + patch_size])
             output_rows.append({**row, "mask_path": _relative(mask_path, ctx["output_root"])})
@@ -724,6 +1016,8 @@ def _segment(ctx: dict[str, Any]) -> dict[str, Any]:
             "model": "DeepCell Mesmer",
             "nuclear_channel": channels[nuclear_index],
             "boundary_channels": [channels[index] for index in boundary_indices],
+            "image_mpp": cfg.get("image_mpp", 0.69),
+            "cell_ids_unique_within": "slide_name",
         },
     )
 
@@ -735,54 +1029,88 @@ def _cell_extract(ctx: dict[str, Any]) -> dict[str, Any]:
     channels = _channels(ctx)
     patch_size = int(ctx["config"].get("tiling", {}).get("patch_size", 256))
     passing = {
-        (row["slide_name"], int(row["row"]), int(row["col"])): row["split"]
+        (
+            row.get("fov_name", row["slide_name"]),
+            int(row.get("fov_row", row["row"])),
+            int(row.get("fov_col", row["col"])),
+        ): row["split"]
         for row in qc_rows
         if int(row["qc_pass"]) == 1
     }
     grouped: dict[str, list[dict[str, str]]] = defaultdict(list)
     for row in rows:
-        grouped[row["slide_name"]].append(row)
+        grouped[row.get("fov_name", row["slide_name"])].append(row)
     cells: list[dict[str, Any]] = []
-    for slide_name, slide_rows in grouped.items():
-        max_id = 0
-        for row in slide_rows:
-            max_id = max(max_id, int(np.max(np.load(ctx["output_root"] / row["mask_path"]))))
-        counts = np.zeros(max_id + 1, dtype=np.int64)
-        sum_y = np.zeros(max_id + 1, dtype=np.float64)
-        sum_x = np.zeros(max_id + 1, dtype=np.float64)
-        sums = np.zeros((max_id + 1, len(channels)), dtype=np.float64)
-        for row in slide_rows:
+    for fov_name, fov_rows in grouped.items():
+        slide_names = {row["slide_name"] for row in fov_rows}
+        if len(slide_names) != 1:
+            raise ValueError(f"FOV {fov_name!r} is associated with multiple slide names")
+        slide_name = next(iter(slide_names))
+        origins_y = {
+            (int(row["row"]) - int(row.get("fov_row", row["row"]))) * patch_size for row in fov_rows
+        }
+        origins_x = {
+            (int(row["col"]) - int(row.get("fov_col", row["col"]))) * patch_size for row in fov_rows
+        }
+        if len(origins_y) != 1 or len(origins_x) != 1:
+            raise ValueError(f"Inconsistent global origin across patches in FOV {fov_name!r}")
+        origin_y, origin_x = next(iter(origins_y)), next(iter(origins_x))
+        id_parts = []
+        for row in fov_rows:
+            ids = np.unique(np.load(ctx["output_root"] / row["mask_path"]))
+            id_parts.append(ids[ids > 0].astype(np.int64, copy=False))
+        all_cell_ids = np.unique(np.concatenate(id_parts)) if id_parts else np.asarray([], dtype=np.int64)
+        counts = np.zeros(len(all_cell_ids), dtype=np.int64)
+        sum_y = np.zeros(len(all_cell_ids), dtype=np.float64)
+        sum_x = np.zeros(len(all_cell_ids), dtype=np.float64)
+        sums = np.zeros((len(all_cell_ids), len(channels)), dtype=np.float64)
+        for row in fov_rows:
             mask = np.load(ctx["output_root"] / row["mask_path"]).astype(np.int64)
             target = np.load(ctx["output_root"] / row["target_path"])
             ids = mask.reshape(-1)
-            counts += np.bincount(ids, minlength=max_id + 1)
+            foreground = ids > 0
+            positions = np.searchsorted(all_cell_ids, ids[foreground])
+            counts += np.bincount(positions, minlength=len(all_cell_ids))
             yy, xx = np.indices(mask.shape)
-            y_offset, x_offset = int(row["row"]) * patch_size, int(row["col"]) * patch_size
-            sum_y += np.bincount(ids, weights=(yy + y_offset).reshape(-1), minlength=max_id + 1)
-            sum_x += np.bincount(ids, weights=(xx + x_offset).reshape(-1), minlength=max_id + 1)
+            y_offset = int(row.get("fov_row", row["row"])) * patch_size
+            x_offset = int(row.get("fov_col", row["col"])) * patch_size
+            sum_y += np.bincount(
+                positions,
+                weights=(yy + y_offset).reshape(-1)[foreground],
+                minlength=len(all_cell_ids),
+            )
+            sum_x += np.bincount(
+                positions,
+                weights=(xx + x_offset).reshape(-1)[foreground],
+                minlength=len(all_cell_ids),
+            )
             for index in range(len(channels)):
-                sums[:, index] += np.bincount(ids, weights=target[..., index].reshape(-1), minlength=max_id + 1)
-        for cell_id in np.flatnonzero(counts):
-            if int(cell_id) == 0:
-                continue
-            centroid_y, centroid_x = sum_y[cell_id] / counts[cell_id], sum_x[cell_id] / counts[cell_id]
+                sums[:, index] += np.bincount(
+                    positions,
+                    weights=target[..., index].reshape(-1)[foreground],
+                    minlength=len(all_cell_ids),
+                )
+        for cell_index, cell_id in enumerate(all_cell_ids.tolist()):
+            centroid_y = sum_y[cell_index] / counts[cell_index]
+            centroid_x = sum_x[cell_index] / counts[cell_index]
             rr, cc = int(centroid_y // patch_size), int(centroid_x // patch_size)
-            split = passing.get((slide_name, rr, cc))
+            split = passing.get((fov_name, rr, cc))
             if split is None:
                 continue
             cell: dict[str, Any] = {
                 "slide_name": slide_name,
+                "fov_name": fov_name,
                 "global_cell_id": int(cell_id),
                 "split": split,
-                "area": int(counts[cell_id]),
-                "centroid_y": float(centroid_y),
-                "centroid_x": float(centroid_x),
+                "area": int(counts[cell_index]),
+                "centroid_y": float(centroid_y + origin_y),
+                "centroid_x": float(centroid_x + origin_x),
             }
             for index, channel in enumerate(channels):
-                cell[channel] = float(sums[cell_id, index] / counts[cell_id])
+                cell[channel] = float(sums[cell_index, index] / counts[cell_index])
             cells.append(cell)
     destination = ctx["output_root"] / "cell_annotations_continuous.csv"
-    fields = ["slide_name", "global_cell_id", "split", "area", "centroid_y", "centroid_x", *channels]
+    fields = ["slide_name", "fov_name", "global_cell_id", "split", "area", "centroid_y", "centroid_x", *channels]
     _write_csv(destination, cells, fields)
     return _stage_report(
         ctx,
@@ -863,7 +1191,7 @@ def _gate(ctx: dict[str, Any]) -> dict[str, Any]:
             }
         )
     destination = ctx["output_root"] / "cell_annotations.csv"
-    fields = ["slide_name", "global_cell_id", "split", "area", "centroid_y", "centroid_x"]
+    fields = ["slide_name", "fov_name", "global_cell_id", "split", "area", "centroid_y", "centroid_x"]
     for channel in channels:
         fields.extend([channel, f"{channel}_pos"])
     _write_csv(destination, rows, fields)
@@ -907,6 +1235,7 @@ def run_preprocessing(
     dry_run: bool = False,
 ) -> dict[str, Any]:
     ctx = load_preprocessing_config(config_path, output_dir=output_dir, overrides=overrides)
+    warnings = _validate_preprocessing_config(ctx)
     requested = stages or ["all"]
     if "all" in requested:
         requested = list(STAGES)
@@ -921,6 +1250,10 @@ def run_preprocessing(
         "output_root": str(ctx["output_root"]),
         "stages": requested,
         "dry_run": bool(dry_run),
+        "channel_count": len(_channels(ctx)),
+        "access_status": ctx["config"]["dataset"].get("access", {}).get("status", "unspecified"),
+        "reproduction_status": ctx["config"].get("reproduction", {}).get("status", "unspecified"),
+        "warnings": warnings,
     }
     if dry_run:
         return plan
