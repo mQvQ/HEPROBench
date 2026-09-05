@@ -19,10 +19,14 @@ It includes:
   slide-macro aggregation, cell-level PCC/classification, and native efficiency;
 - bundled integer cell-ID masks and synthetic valid/test cell annotations for a
   complete reviewer-side evaluation smoke test;
-- conda and pip environment files.
+- conda and pip environment files;
+- an executable native train-to-inference-to-evaluation verification matrix for
+  all ten registered methods, with a machine-readable pass/fail report;
 - a fully specified CRC-CODEX preprocessing/QC reference pipeline, including
   VALIS/manual registration QC, legacy normalization, robust-NMI filtering,
-  Mesmer, cell extraction, and GMM marker QC.
+  Mesmer, cell extraction, and GMM marker QC;
+- privacy-safe preprocessing JSONs and adapters for the other eight benchmark
+  datasets, with access and parameter-audit status stated explicitly.
 
 It intentionally does not include:
 
@@ -31,10 +35,12 @@ It intentionally does not include:
 - full training outputs or experiment logs;
 - private paths or unreleased data.
 
-CRC-CODEX is currently the only cohort with an end-to-end preprocessing JSON.
-The other eight cohort adapters and the de-identified exact study split
-manifest remain required before claiming full benchmark-wide preprocessing
-reproducibility.
+All nine cohorts now have executable preprocessing JSONs. CRC-CODEX is the
+detailed tutorial and planned real-data reviewer demo; the other eight are
+reference implementations because their data are not redistributed. Three
+cohorts still have explicitly marked historical-parameter audit gaps, and
+deidentified exact study split manifests remain required before claiming exact
+paper-result reproduction for every cohort. See `docs/preprocessing_datasets.md`.
 
 Remote foundation-model revisions/checksums and redistribution permission for
 source trees without an explicit upstream license remain release-blocking
@@ -43,3 +49,9 @@ provenance items; see `UPSTREAM.md` and `methods/pfm/specs.json`.
 The included synthetic data and generated demo checkpoints are only for
 checking that the software reaches each retained training loop. They are not
 scientific benchmark results.
+
+Run `bash run_all_method_demos.sh --device cuda:0` to reproduce the complete
+native software check. The default evaluation omits LPIPS/DISTS for speed but
+retains image, slide-macro, and cell-level evaluation; `--perceptual` and
+`--profile` exercise the optional perceptual and computational-efficiency
+paths.

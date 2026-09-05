@@ -8,8 +8,12 @@
     "csv_path": "../../demo_data/splits/{split}.csv",
     "channel_names_file": "../../demo_data/channel_names.json"
   },
-  "train": {"batch_size": 1, "max_iters": 1, "num_workers": 0, "stage1_iters": 1},
+  "train": {"batch_size": 1, "max_iters": 1, "num_workers": 0, "stage1_iters": 1, "ckpt_interval": 1},
+  "model": {"checkpoint_path": "../../outputs/demo/hex/checkpoints/checkpoint_step_1.pth"},
   "runtime": {"device": "cuda:0"},
   "output": {"run_dir": "../../outputs/demo/hex"},
-  "native": {"train": {"launcher": {"type": "python"}, "args": {"no_musk_pretrained": true}}}
+  "native": {
+    "train": {"launcher": {"type": "python"}, "args": {"no_musk_pretrained": true}},
+    "infer": {"config": {"no_musk_pretrained": true}}
+  }
 }

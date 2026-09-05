@@ -45,6 +45,19 @@ def main(cfg: DictConfig) -> None:
     write_github_logs(logdir)
     train_patchgan(cfg, str(logdir))
 
+    # Native training keeps timestamped logs for provenance.  Also publish the
+    # two files consumed by sp_infer.py to a stable, JSON-configured directory
+    # so a subsequent unified `infer` command can use this training run without
+    # manual checkpoint discovery or copying.
+    checkpoint_dir = cfg.output.get("checkpoint_dir") if cfg.get("output") else None
+    if checkpoint_dir:
+        checkpoint_dir = Path(checkpoint_dir)
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(logdir / "config.yaml", checkpoint_dir / "config.yaml")
+        shutil.copy2(logdir / "model.weights.ckpt", checkpoint_dir / "model.weights.ckpt")
+        with open(checkpoint_dir / "source_run.txt", "w", encoding="utf-8") as handle:
+            handle.write(str(logdir.resolve()) + "\n")
+
     with open(str(logdir / "status.txt"), "w") as f:
             f.write("finished")
     wandb.finish()

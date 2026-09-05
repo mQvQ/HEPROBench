@@ -16,6 +16,7 @@ from methods.runner_utils import (
     parser,
     python_command,
     resolve_known_paths,
+    resolve_path,
     run_dir,
     set_default,
     set_from,
@@ -55,6 +56,8 @@ def main() -> int:
             set_from(payload, key, train.get(key), data.get(key))
         set_from(payload, "base_save_path", output.get("checkpoint_dir"), str(destination))
         set_from(payload, "device", runtime.get("device"))
+        if payload.get("split"):
+            payload["split"] = resolve_path(payload["split"], source)
         payload = resolve_known_paths(payload, source)
         native_path = write_json(payload, destination / "native_train_config.json")
         launcher = task_cfg.get("launcher", {})

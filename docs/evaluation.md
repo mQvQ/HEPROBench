@@ -25,6 +25,16 @@ verifies the evaluation stack without requiring a training run or checkpoint.
 To evaluate predictions produced by a method, point the same `evaluate` command
 at a directory containing `valid/` and `test/` subdirectories.
 
+To generate those predictions from freshly trained checkpoints for every
+registered method and then run this evaluator, use:
+
+```bash
+bash run_all_method_demos.sh --device cuda:0
+```
+
+See [the native E2E demo guide](end_to_end_demo.md) for the verified artifact
+contracts and optional `--perceptual`/`--profile` paths.
+
 The equivalent commands are:
 
 ```bash

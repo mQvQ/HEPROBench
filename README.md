@@ -95,6 +95,19 @@ train, two validation, and two test samples, plus slide-global cell IDs and a
 128-cell annotation table. Every JSON below is a one-step smoke run;
 `method.name` is read from the JSON, so all methods use the same command shape.
 
+The complete train-to-evaluation matrix is one command:
+
+```bash
+bash run_all_method_demos.sh --device cuda:0
+```
+
+It trains all ten methods sequentially, runs valid/test inference, validates
+both HDF5 submissions, evaluates image/per-slide/cell metrics, and writes
+`outputs/demo/verification_summary.json`. See the
+[native E2E demo guide](docs/end_to_end_demo.md) for individual commands,
+method selection, optional LPIPS/DISTS and efficiency profiling, and the
+opt-in regression test.
+
 ```bash
 python -m heprobench train --config configs/demo/rosie.json
 python -m heprobench train --config configs/demo/cut.json
@@ -105,6 +118,7 @@ python -m heprobench train --config configs/demo/gigatime_original.json
 python -m heprobench train --config configs/demo/gigatime_reg.json
 python -m heprobench train --config configs/demo/miphei_vit.json
 python -m heprobench train --config configs/demo/dpt_fm_h0-mini.json
+python -m heprobench train --config configs/demo/hex.json
 ```
 
 MIPHEI-ViT and DPT-FM use a randomly initialized H0-mini encoder in the demo
@@ -113,12 +127,11 @@ loss, optimizer, and training loop. Formal configurations keep the pretrained
 foundation-model protocol and may require `HF_TOKEN` or a local checkpoint.
 
 HEX retains MUSK strictly as an internal architectural dependency, not as a
-standalone benchmark method. After installing that upstream package, its demo
-uses one GPU and skips the pretrained-weight download:
+standalone benchmark method. Install it once before running HEX or the complete
+matrix; the HEX demo uses one GPU and skips the pretrained-weight download:
 
 ```bash
 pip install "git+https://github.com/lilab-stanford/MUSK.git"
-python -m heprobench train --config configs/demo/hex.json
 ```
 
 Use `--dry-run` on any command to inspect the fully resolved native command
@@ -301,5 +314,6 @@ cell-level results, and an optional native efficiency report.
 - [Submission format](docs/submission_format.md)
 - [Evaluation protocol](docs/evaluation.md)
 - [Unified CLI and JSON](docs/unified_cli.md)
+- [Native train-to-evaluation demo](docs/end_to_end_demo.md)
 - [Review notes](docs/review_notes.md)
 - [Upstream code and licensing](UPSTREAM.md)

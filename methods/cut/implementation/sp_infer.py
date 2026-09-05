@@ -280,7 +280,8 @@ def _build_test_opt(cfg: Dict[str, Any]) -> Any:
 
     args: List[str] = []
     args += add("--model", cfg.get("model", "cut"))
-    args += add("--CUT_mode", cfg.get("CUT_mode"))
+    if cfg.get("CUT_mode") is not None:
+        args += add("--CUT_mode", cfg["CUT_mode"])
     args += add("--name", cfg.get("name"))
     args += add("--checkpoints_dir", cfg.get("checkpoints_dir"))
     args += add("--epoch", cfg.get("epoch", "latest"))
@@ -297,7 +298,8 @@ def _build_test_opt(cfg: Dict[str, Any]) -> Any:
     args += add("--batch_size", cfg.get("batch_size", 16))
     args += add("--num_threads", cfg.get("num_threads", 4))
     args += add("--gpu_ids", cfg.get("gpu_ids", "0"))
-    args += add("--panel_key", cfg.get("panel_key"))
+    if cfg.get("panel_key") is not None:
+        args += add("--panel_key", cfg["panel_key"])
     args += add("--serial_batches")
     args += add("--no_flip")
     if cfg.get("eval", True):

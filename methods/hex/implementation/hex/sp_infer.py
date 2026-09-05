@@ -397,6 +397,7 @@ def _load_model(cfg: Dict[str, Any], *, num_outputs: int, device: torch.device) 
         num_outputs=int(num_outputs),
         fds_config=fds_cfg,
         musk_img_size=int(cfg.get("musk_img_size", cfg.get("img_size", 384))),
+        pretrained=not bool(cfg.get("no_musk_pretrained", False)),
     ).to(device)
 
     ckpt_path = str(cfg["checkpoint_path"])
@@ -479,9 +480,10 @@ def main() -> None:
     if split_arg == "both" and "{split}" not in csv_template:
         raise ValueError("For --split both with --csv_path, please use a template containing '{split}'")
 
-    # if "gpu_id" in cfg and cfg["gpu_id"] is not None:
-    #     os.environ["CUDA_VISIBLE_DEVICES"] = str(cfg["gpu_id"])
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    configured_device = str(cfg.get("device") or "cuda").strip().lower()
+    if configured_device.startswith("cuda") and not torch.cuda.is_available():
+        configured_device = "cpu"
+    device = torch.device(configured_device)
 
     channel_names = _load_channel_names_file(str(cfg["channel_names_file"]))
     num_outputs = len(channel_names)

@@ -72,9 +72,12 @@ def run_hepro(
             raise ValueError("native.train.config must be an object")
         payload = deep_merge(payload, {"data": object_at(config, "data")})
         payload = deep_merge(payload, {"train": object_at(config, "train")})
+        model = object_at(config, "model")
         payload = deep_merge(payload, {"model": _model_config(config, variant, encoder)})
         payload = deep_merge(payload, {"runtime": object_at(config, "runtime")})
-        payload = deep_merge(payload, {"output": {**object_at(config, "output"), "run_dir": str(destination)}})
+        output = {**object_at(config, "output"), "run_dir": str(destination)}
+        output.setdefault("checkpoint_dir", model.get("checkpoint_dir") or str(destination / "checkpoint"))
+        payload = deep_merge(payload, {"output": output})
         payload = resolve_known_paths(payload, source)
         native_path = write_yaml_compatible_json(payload, destination / "native_train_config.yaml")
         extra = task_cfg.get("hydra_overrides", [])
@@ -95,6 +98,7 @@ def run_hepro(
 
     names = {"miphei_vit": "MIPHEI-ViT", "gigatime_reg": "GigaTIME-Reg", "dpt_fm": f"DPT-{encoder}"}
     payload, _ = inference_payload(config, source, method_name=names[variant])
+    set_default(payload, "checkpoint_dir", str(destination / "checkpoint"))
     dataset_config = payload.pop("dataset_config", None)
     if dataset_config is None and not payload.get("dataset_config_path"):
         dataset_config = {"data": object_at(config, "data")}

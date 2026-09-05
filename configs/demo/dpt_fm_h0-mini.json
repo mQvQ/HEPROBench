@@ -1,6 +1,6 @@
 {
   "extends": ["../foundation_models/h0-mini.json", "_hepro_overrides.json", "_evaluation.json"],
-  "model": {"encoder": {"pretrained": false}},
+  "model": {"encoder": {"pretrained": false}, "checkpoint_dir": "../../outputs/demo/dpt_fm/h0-mini/checkpoint"},
   "runtime": {"device": "cpu"},
   "output": {"run_dir": "../../outputs/demo/dpt_fm/h0-mini"}
 }

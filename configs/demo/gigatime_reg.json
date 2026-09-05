@@ -1,4 +1,5 @@
 {
   "extends": ["../experiments/gigatime_reg.json", "_hepro_overrides.json", "_evaluation.json"],
+  "model": {"checkpoint_dir": "../../outputs/demo/gigatime_reg/checkpoint"},
   "output": {"run_dir": "../../outputs/demo/gigatime_reg"}
 }

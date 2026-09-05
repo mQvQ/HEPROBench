@@ -182,8 +182,41 @@ class DryRunTests(unittest.TestCase):
                     native_path = result["native"].get("native_config")
                     self.assertTrue(native_path)
                     payload = json.loads(Path(native_path).read_text(encoding="utf-8"))
+                    self.assertEqual(payload["split"], "test")
                     if "output_nc" in payload:
                         self.assertEqual(payload["output_nc"], 4)
+
+    def test_demo_training_checkpoints_are_consumed_by_inference(self) -> None:
+        hepro_stems = ("gigatime_reg", "miphei_vit", "dpt_fm_h0-mini")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for stem in hepro_stems:
+                with self.subTest(method=stem):
+                    config_path = ROOT / "configs" / "demo" / f"{stem}.json"
+                    train_result = dispatch_method_task(
+                        task="train",
+                        method_name=None,
+                        config_path=config_path,
+                        output_dir=str(Path(temp_dir) / stem),
+                        dry_run=True,
+                    )
+                    infer_result = dispatch_method_task(
+                        task="infer",
+                        method_name=None,
+                        config_path=config_path,
+                        output_dir=str(Path(temp_dir) / stem),
+                        dry_run=True,
+                    )
+                    train_payload = json.loads(
+                        Path(train_result["native"]["native_config"]).read_text(encoding="utf-8")
+                    )
+                    infer_payload = json.loads(
+                        Path(infer_result["native"]["native_config"]).read_text(encoding="utf-8")
+                    )
+                    self.assertEqual(train_payload["output"]["checkpoint_dir"], infer_payload["checkpoint_dir"])
+
+        hex_config, _ = load_experiment_config(ROOT / "configs" / "demo" / "hex.json")
+        self.assertEqual(hex_config["train"]["ckpt_interval"], 1)
+        self.assertTrue(hex_config["model"]["checkpoint_path"].endswith("checkpoint_step_1.pth"))
 
     def test_shared_batch_size_reaches_each_native_pipeline(self) -> None:
         direct_args = {

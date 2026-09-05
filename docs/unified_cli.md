@@ -7,6 +7,16 @@ python -m heprobench train --config EXPERIMENT.json
 python -m heprobench infer --config EXPERIMENT.json
 ```
 
+All ten bundled method JSONs are exercised through train, valid/test inference,
+HDF5 validation, and evaluation by:
+
+```bash
+bash run_all_method_demos.sh --device cuda:0
+```
+
+The script and its machine-readable verification report are described in
+[the native E2E demo guide](end_to_end_demo.md).
+
 `method.name` in the JSON selects the runner. `--method METHOD` remains an
 optional explicit override and must agree with the JSON value. It is still
 required by the retained legacy YAML demo.
@@ -24,6 +34,10 @@ materialized native config when applicable, and `native_command.json`.
 - `train` and `inference`: common task parameters.
 - `runtime`: Python executable and device.
 - `output.run_dir`: audit files and method artifacts.
+- `model.checkpoint_path` / `model.checkpoint_dir`: the stable checkpoint read
+  by a later inference command. HEPRO-derived native training retains its
+  timestamped log directory and also publishes `config.yaml` plus
+  `model.weights.ckpt` here.
 - `native.train` / `native.infer`: parameters that belong only to the retained
   original program.
 
@@ -82,7 +96,7 @@ python -m heprobench validate-submission \
 
 python -m heprobench evaluate \
   --config configs/experiments/rosie.json \
-  --pred-dir outputs/rosie/predictions/ROSIE/test
+  --pred-dir outputs/rosie/predictions/ROSIE
 ```
 
 Cell classification requires validation predictions for fitting XGBoost and

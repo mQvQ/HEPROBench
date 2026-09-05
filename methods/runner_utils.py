@@ -40,7 +40,6 @@ PATH_KEYS = {
     "resume_path",
     "root_dir",
     "save_dir",
-    "split",
     "slide_dataframe_path",
     "src_folder",
     "test_dataframe_path",

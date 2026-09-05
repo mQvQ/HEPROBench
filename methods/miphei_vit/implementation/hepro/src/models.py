@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
-from torchmetrics import MetricCollection, Dice
+from torchmetrics import MetricCollection
 from torchmetrics.classification import BinaryPrecision, BinaryRecall
 
 from .loss import FocalLoss, CellClusterLoss
