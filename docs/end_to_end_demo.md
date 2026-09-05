@@ -12,8 +12,33 @@ JSON config
   -> image, slide-macro, and cell evaluation
 ```
 
-These are software smoke runs on the bundled synthetic data. Their metric
-values are not scientific benchmark results.
+Two interchangeable data layers are available. The committed synthetic
+fixture is intended for fast regression testing. The recommended reviewer
+path uses a separately hosted, deidentified real CRC-CODEX subset. Both are
+software smoke runs; their metric values are not scientific benchmark results.
+
+## Real CRC-CODEX reviewer data
+
+Download and checksum the public bundle:
+
+```bash
+python scripts/download_crc_codex_reviewer_demo.py
+```
+
+This resolves the immutable Hugging Face revision
+`442b41a1c7794993508558c899361b98d52e2879` into
+`reviewer_data/crc_codex/`. It contains four train, four validation, and four
+test patches across two anonymous FOVs per split, with four target channels,
+Mesmer masks, and cell annotations. Run all methods against it with:
+
+```bash
+bash run_all_method_demos.sh \
+  --device cuda:0 \
+  --config-dir configs/reviewer_demo
+```
+
+Outputs are isolated under `outputs/reviewer_demo/`; the synthetic fixture and
+its configs remain unchanged.
 
 ## Environment
 
@@ -52,6 +77,10 @@ The command sequentially runs the following JSONs:
 | MIPHEI-ViT | `configs/demo/miphei_vit.json` | `MIPHEI-ViT` |
 | DPT-FM H0-mini | `configs/demo/dpt_fm_h0-mini.json` | `DPT-h0-mini` |
 | HEX | `configs/demo/hex.json` | `HEX` |
+
+Passing `--config-dir configs/reviewer_demo` selects the corresponding JSONs
+under that directory while retaining the same method order and artifact
+checks. The normal default remains `configs/demo` for offline synthetic tests.
 
 The script records every attempted command and exits non-zero if any method or
 artifact contract fails. The machine-readable report is written to:

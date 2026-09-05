@@ -1,0 +1,9 @@
+{
+  "extends": ["../demo/dpt_fm_h0-mini.json", "_crc_codex_data.json"],
+  "model": {
+    "checkpoint_dir": "../../outputs/reviewer_demo/dpt_fm/h0-mini/checkpoint"
+  },
+  "output": {
+    "run_dir": "../../outputs/reviewer_demo/dpt_fm/h0-mini"
+  }
+}

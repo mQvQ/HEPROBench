@@ -1,0 +1,15 @@
+{
+  "extends": ["../demo/cyclegan.json", "_crc_codex_data.json"],
+  "output": {
+    "run_dir": "../../outputs/reviewer_demo/cyclegan",
+    "run_name": "cyclegan-demo"
+  },
+  "native": {
+    "infer": {
+      "config": {
+        "checkpoints_dir": "../../outputs/reviewer_demo/cyclegan/checkpoints",
+        "name": "cyclegan-demo"
+      }
+    }
+  }
+}

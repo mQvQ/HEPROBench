@@ -166,6 +166,21 @@ class DryRunTests(unittest.TestCase):
                     )
                     self.assertTrue(result["native"]["command"])
 
+    def test_real_reviewer_configs_are_isolated_from_synthetic_demo(self) -> None:
+        reviewer_configs = sorted((ROOT / "configs" / "reviewer_demo").glob("*.json"))
+        reviewer_configs = [path for path in reviewer_configs if not path.name.startswith("_")]
+        self.assertEqual(len(reviewer_configs), 10)
+        for config_path in reviewer_configs:
+            with self.subTest(config=config_path.name):
+                config, _ = load_experiment_config(config_path)
+                self.assertIn("reviewer_data/crc_codex", config["data"]["root_dir"])
+                self.assertNotIn("demo_data", json.dumps(config["data"]))
+                self.assertIn("outputs/reviewer_demo", config["output"]["run_dir"])
+                self.assertIn(
+                    "reviewer_data/crc_codex",
+                    config["evaluation"]["cell"]["annotations_csv"],
+                )
+
     def test_demo_inference_configs_match_four_channel_bundle(self) -> None:
         demo_configs = sorted((ROOT / "configs" / "demo").glob("*.json"))
         demo_configs = [path for path in demo_configs if not path.name.startswith("_")]

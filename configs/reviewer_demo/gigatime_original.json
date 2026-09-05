@@ -1,0 +1,10 @@
+{
+  "extends": ["../demo/gigatime_original.json", "_crc_codex_data.json"],
+  "model": {
+    "checkpoint_path": "../../outputs/reviewer_demo/gigatime_original/models/gigatime-original-demo/model.pth"
+  },
+  "output": {
+    "run_dir": "../../outputs/reviewer_demo/gigatime_original",
+    "run_name": "gigatime-original-demo"
+  }
+}

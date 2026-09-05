@@ -1,0 +1,28 @@
+{
+  "data": {
+    "slide_dataframe_path": null,
+    "train_dataframe_path": "../../reviewer_data/crc_codex/splits/train.csv",
+    "val_dataframe_path": "../../reviewer_data/crc_codex/splits/valid.csv",
+    "test_dataframe_path": "../../reviewer_data/crc_codex/splits/test.csv",
+    "train_csv": "../../reviewer_data/crc_codex/splits/train.csv",
+    "val_csv": "../../reviewer_data/crc_codex/splits/valid.csv",
+    "test_csv": "../../reviewer_data/crc_codex/splits/test.csv",
+    "csv_path": "../../reviewer_data/crc_codex/splits/{split}.csv",
+    "root_dir": "../../reviewer_data/crc_codex",
+    "src_folder": "../../reviewer_data/crc_codex",
+    "tgt_folder": "../../reviewer_data/crc_codex",
+    "split": "../../reviewer_data/crc_codex/splits/train.csv",
+    "channel_stats_path": "../../reviewer_data/crc_codex/channel_stats.json",
+    "channel_names_file": "../../reviewer_data/crc_codex/channel_names.json",
+    "targ_channel_names": ["DAPI", "CD3", "CD20", "PanCK"],
+    "cohort": "crc-codex-review-demo"
+  },
+  "evaluation": {
+    "cell": {
+      "annotations_csv": "../../reviewer_data/crc_codex/cell_annotations.csv"
+    },
+    "efficiency": {
+      "protocol": "real-crc-codex-review-demo-smoke-test"
+    }
+  }
+}

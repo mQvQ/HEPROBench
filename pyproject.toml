@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "heprobench-review"
 version = "0.1.0"
-description = "Runnable HEPROBench review demo with synthetic data and tiny foundation-model method implementations."
+description = "Runnable HEPROBench review framework with real and synthetic demos and method-specific pipelines."
 requires-python = ">=3.10"
 dependencies = [
   "torch>=2.1",

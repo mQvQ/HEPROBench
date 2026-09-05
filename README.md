@@ -21,16 +21,16 @@ experiments to the method-specific training and inference implementations;
 predictions then use one HDF5 contract and one evaluation interface.
 
 > [!NOTE]
-> The original synthetic review demo remains available for regression testing.
-> The formal JSON experiments use the included method-specific pipelines, but
-> private datasets and full-size checkpoints are not distributed.
+> A deidentified real CRC-CODEX reviewer demo is published separately on
+> Hugging Face. The original synthetic demo remains committed for regression
+> testing. Private datasets and full-size checkpoints are not distributed.
 
 ## At a Glance
 
 | Component | What it provides |
 | --- | --- |
 | **Unified interface** | A consistent configuration and command-line workflow across methods. |
-| **Runnable examples** | Synthetic H&E images, multiplex targets, and small checkpoints for local testing. |
+| **Runnable examples** | A separately hosted real CRC-CODEX reviewer bundle plus committed synthetic regression fixtures and small checkpoints. |
 | **Submission validation** | Structured HDF5 output validation before evaluation. |
 | **Metrics** | Paper image metrics (RMSE, PSNR, SSIM, LPIPS, DISTS), diagnostic MAE/MSE/Pearson, slide-macro aggregation, cell PCC/classification, and computational efficiency. |
 | **Preprocessing/QC** | One JSON-driven pipeline plus dataset-specific adapters for all nine datasets: grouped split, registration/manual QC, FOV-aware tiling, normalization, patch QC, Mesmer, cell extraction, and GMM gating. |
@@ -90,6 +90,37 @@ See [the unified CLI reference](docs/unified_cli.md) for the JSON contract and
 the exact native entrypoint used by every method.
 
 ### 3. Train the native pipelines on bundled demo data
+
+#### Real CRC-CODEX reviewer demo (recommended)
+
+Download the public, non-gated dataset at the audited revision and verify its
+file manifest:
+
+```bash
+python scripts/download_crc_codex_reviewer_demo.py
+```
+
+Dataset: [u3011706/HEPROBench-CRC-CODEX-review-demo](https://huggingface.co/datasets/u3011706/HEPROBench-CRC-CODEX-review-demo),
+revision `442b41a1c7794993508558c899361b98d52e2879`.
+
+The 12 real, registered, QC-passing H&E/CODEX patches include Mesmer cell-ID
+masks and cell annotations. Run the same ten-method matrix against them with:
+
+```bash
+bash run_all_method_demos.sh \
+  --device cuda:0 \
+  --config-dir configs/reviewer_demo
+```
+
+These marker-balanced patches verify software execution; they are not a
+representative sample and their metrics are not paper-result reproductions.
+The bundle uses anonymous FOV names, contains no clinical outcomes or patient
+mappings, and has no source paths or JPEG EXIF. Its provenance, GMM gates, and
+SHA-256 manifest are included with the download. See the
+[CRC-CODEX preprocessing reference](docs/preprocessing_crc_codex.md) for the
+source and release audit.
+
+#### Committed synthetic regression fixture
 
 The repository includes eight 256×256 H&E/target/mask triplets split into four
 train, two validation, and two test samples, plus slide-global cell IDs and a
@@ -235,6 +266,7 @@ python -m heprobench evaluate \
 HEPROBench/
 ├── configs/       # Demo and method configuration files
 ├── demo_data/     # Synthetic H&E, targets, cell-ID masks, and cell annotations
+├── reviewer_data/ # Ignored local download of the real CRC-CODEX reviewer demo
 ├── docs/          # Data, method, and submission references
 ├── heprobench/    # CLI, training, inference, clinical analysis, validation, and metrics
 ├── methods/       # Runnable method adapters and model registry

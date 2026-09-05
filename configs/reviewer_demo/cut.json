@@ -1,0 +1,15 @@
+{
+  "extends": ["../demo/cut.json", "_crc_codex_data.json"],
+  "output": {
+    "run_dir": "../../outputs/reviewer_demo/cut",
+    "run_name": "cut-demo"
+  },
+  "native": {
+    "infer": {
+      "config": {
+        "checkpoints_dir": "../../outputs/reviewer_demo/cut/checkpoints",
+        "name": "cut-demo"
+      }
+    }
+  }
+}

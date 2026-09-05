@@ -48,7 +48,7 @@ defaults, input schemas, internal source hashes, and synthetic end-to-end check
 are documented in `docs/clinical_evaluation.md`.
 
 All nine cohorts now have executable preprocessing JSONs. CRC-CODEX is the
-detailed tutorial and planned real-data reviewer demo; the other eight are
+detailed tutorial and published real-data reviewer demo; the other eight are
 reference implementations because their data are not redistributed. Three
 cohorts still have explicitly marked historical-parameter audit gaps, and
 deidentified exact study split manifests remain required before claiming exact

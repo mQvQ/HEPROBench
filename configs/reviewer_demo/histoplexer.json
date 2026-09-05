@@ -1,0 +1,19 @@
+{
+  "extends": ["../demo/histoplexer.json", "_crc_codex_data.json"],
+  "model": {
+    "checkpoint_path": "../../outputs/reviewer_demo/histoplexer/crc-codex-review-demo_ours_imc01_channels-all_seed-96/checkpoint-step_1.pt"
+  },
+  "output": {
+    "run_dir": "../../outputs/reviewer_demo/histoplexer",
+    "expected_checkpoints": [
+      "crc-codex-review-demo_ours_imc01_channels-all_seed-96/checkpoint-step_1.pt"
+    ]
+  },
+  "native": {
+    "train": {
+      "config": {
+        "cohort": "crc-codex-review-demo"
+      }
+    }
+  }
+}

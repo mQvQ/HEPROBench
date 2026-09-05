@@ -114,6 +114,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--perceptual", action="store_true", help="Also calculate LPIPS and DISTS")
     parser.add_argument("--profile", action="store_true", help="Run native efficiency profiling and attach it to evaluation")
     parser.add_argument(
+        "--config-dir",
+        type=Path,
+        default=None,
+        help="Directory containing the same demo JSON filenames, for example configs/reviewer_demo",
+    )
+    parser.add_argument(
         "--summary",
         type=Path,
         default=ROOT / "outputs" / "demo" / "verification_summary.json",
@@ -135,6 +141,7 @@ def main() -> int:
         "device_override": args.device,
         "perceptual": bool(args.perceptual),
         "profile": bool(args.profile),
+        "config_dir": str(args.config_dir.expanduser().resolve()) if args.config_dir else None,
         "status": "running",
         "methods": [],
     }
@@ -142,7 +149,13 @@ def main() -> int:
     all_passed = True
 
     for method in methods:
-        config_path = ROOT / method.config
+        config_path = (
+            args.config_dir.expanduser().resolve() / Path(method.config).name
+            if args.config_dir
+            else ROOT / method.config
+        )
+        if not config_path.is_file():
+            raise FileNotFoundError(config_path)
         config, source = load_experiment_config(config_path)
         run_dir = get_run_dir(config, method=method.name, task="train", source_path=source)
         prediction_root = run_dir / "predictions" / method.prediction_name
@@ -161,7 +174,7 @@ def main() -> int:
         common = [sys.executable, "-m", "heprobench"]
         device_args = ["--device", args.device] if args.device else []
         if not args.skip_train:
-            commands.append(("train", [*common, "train", "--config", method.config, *device_args]))
+            commands.append(("train", [*common, "train", "--config", str(config_path), *device_args]))
 
         method_passed = True
         for step, command in commands:
@@ -173,9 +186,20 @@ def main() -> int:
                 break
 
         if method_passed:
+            configured_checkpoints = config.get("output", {}).get("expected_checkpoints")
+            if configured_checkpoints is not None and (
+                not isinstance(configured_checkpoints, list)
+                or not all(isinstance(path, str) and path for path in configured_checkpoints)
+            ):
+                raise ValueError("output.expected_checkpoints must be a list of non-empty paths")
+            checkpoint_paths = (
+                tuple(str(path) for path in configured_checkpoints)
+                if configured_checkpoints is not None
+                else method.checkpoints
+            )
             checkpoint_result = _artifact_step(
                 "checkpoint_contract",
-                [run_dir / relative for relative in method.checkpoints],
+                [run_dir / relative for relative in checkpoint_paths],
             )
             method_result["steps"].append(checkpoint_result)
             method_passed = checkpoint_result["status"] == "passed"
@@ -189,7 +213,7 @@ def main() -> int:
                         *common,
                         "infer",
                         "--config",
-                        method.config,
+                        str(config_path),
                         "--split",
                         split,
                         *device_args,
@@ -211,7 +235,7 @@ def main() -> int:
                         *common,
                         "validate-submission",
                         "--config",
-                        method.config,
+                        str(config_path),
                         "--pred-dir",
                         str(prediction_root / split),
                         "--split",
@@ -229,7 +253,7 @@ def main() -> int:
             profile_dir = run_dir / "profile"
             result = _command(
                 "profile",
-                [*common, "profile", "--config", method.config, "--output-dir", str(profile_dir), *device_args],
+                [*common, "profile", "--config", str(config_path), "--output-dir", str(profile_dir), *device_args],
             )
             method_result["steps"].append(result)
             method_passed = result["status"] == "passed"
@@ -241,7 +265,7 @@ def main() -> int:
                 *common,
                 "evaluate",
                 "--config",
-                method.config,
+                str(config_path),
                 "--pred-dir",
                 str(prediction_root),
                 "--perceptual" if args.perceptual else "--no-perceptual",

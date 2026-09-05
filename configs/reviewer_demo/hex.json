@@ -1,0 +1,9 @@
+{
+  "extends": ["../demo/hex.json", "_crc_codex_data.json"],
+  "model": {
+    "checkpoint_path": "../../outputs/reviewer_demo/hex/checkpoints/checkpoint_step_1.pth"
+  },
+  "output": {
+    "run_dir": "../../outputs/reviewer_demo/hex"
+  }
+}

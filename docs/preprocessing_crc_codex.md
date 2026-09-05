@@ -20,9 +20,25 @@ redistributed. The one-row CSV under `configs/preprocessing/templates/` is a
 schema example with fictional paths and is not study data.
 
 The source study is Schürch et al., Mendeley Data DOI
-`10.17632/mpjzbtfgfr.1` (CC BY 4.0). The reviewer demo is distributed
-separately and must include its own file manifest and SHA-256 checksums; binary
-data are not committed to this repository.
+`10.17632/mpjzbtfgfr.1` (CC BY 4.0). The reviewer demo is distributed as a
+public, non-gated Hugging Face dataset rather than committed to GitHub:
+
+```text
+https://huggingface.co/datasets/u3011706/HEPROBench-CRC-CODEX-review-demo
+revision: 442b41a1c7794993508558c899361b98d52e2879
+```
+
+Run `python scripts/download_crc_codex_reviewer_demo.py` to download that exact
+revision and verify all 46 files in `SHA256SUMS`. The 12-patch export is made
+by `scripts/prepare_crc_codex_reviewer_bundle.py`. It selects a four-channel
+subset without rescaling intensities, regenerates JPEGs without EXIF, assigns
+new split-local FOV/file names, and omits source FOV names, patient mappings,
+clinical outcomes, H5AD files, source metadata tables, and local paths.
+
+The landing page currently responds publicly and advertises CC BY 4.0 in its
+license link. The DataCite record also includes CC BY 4.0; it retains a legacy
+`embargoedAccess` rights entry, so the fixed DOI, observed public availability,
+license, and retrieval date should remain in the release audit.
 
 For exact paper-result reproduction, the authors must additionally release the
 de-identified patient-level split manifest for this public cohort, or at least

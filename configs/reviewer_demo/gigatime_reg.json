@@ -1,0 +1,9 @@
+{
+  "extends": ["../demo/gigatime_reg.json", "_crc_codex_data.json"],
+  "model": {
+    "checkpoint_dir": "../../outputs/reviewer_demo/gigatime_reg/checkpoint"
+  },
+  "output": {
+    "run_dir": "../../outputs/reviewer_demo/gigatime_reg"
+  }
+}

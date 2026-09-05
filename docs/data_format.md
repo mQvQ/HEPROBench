@@ -1,6 +1,8 @@
 # Dataset Format
 
-The demo dataset is stored under `demo_data/`.
+The committed synthetic dataset is stored under `demo_data/`. The separately
+hosted real CRC-CODEX reviewer bundle downloads to
+`reviewer_data/crc_codex/` and follows the same contract.
 
 ```text
 demo_data/
@@ -55,6 +57,12 @@ Continuous marker columns provide ground truth for cell-level PCC. The
 `<marker>_pos` columns provide binary labels for valid-to-test XGBoost
 classification. Demo labels are deterministic median gates within each split
 and are intended only for software verification.
+
+In the real CRC-CODEX reviewer bundle, continuous labels are aggregated from
+the selected normalized CODEX channels over Mesmer cell-ID masks. Binary
+labels use the full-cohort GMM intersection thresholds recorded in
+`gmm_gates.json`. Unlike the synthetic fixture, the real bundle has two
+anonymous FOVs per split so per-slide aggregation is exercised directly.
 
 `channel_names.json` is a JSON list such as:
 

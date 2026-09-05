@@ -1,0 +1,15 @@
+{
+  "extends": ["../demo/pix2pix.json", "_crc_codex_data.json"],
+  "output": {
+    "run_dir": "../../outputs/reviewer_demo/pix2pix",
+    "run_name": "pix2pix-demo"
+  },
+  "native": {
+    "infer": {
+      "config": {
+        "checkpoints_dir": "../../outputs/reviewer_demo/pix2pix/checkpoints",
+        "name": "pix2pix-demo"
+      }
+    }
+  }
+}

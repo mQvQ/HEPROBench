@@ -1,0 +1,10 @@
+{
+  "extends": ["../demo/rosie.json", "_crc_codex_data.json"],
+  "model": {
+    "checkpoint_path": "../../outputs/reviewer_demo/rosie/checkpoints/rosie-demo/latest_model.pth"
+  },
+  "output": {
+    "run_dir": "../../outputs/reviewer_demo/rosie",
+    "run_name": "rosie-demo"
+  }
+}
